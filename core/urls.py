@@ -11,6 +11,7 @@ urlpatterns = [
     path('register/customer/', views.register_customer, name='register_customer'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('admin-panel/', views.admin_dashboard, name='admin_dashboard'),
 
     # Marketplace
     path('marketplace/', views.marketplace, name='marketplace'),
@@ -36,4 +37,12 @@ urlpatterns = [
     path('producer/products/<int:pk>/edit/', views.product_edit, name='product_edit'),
     path('producer/orders/', views.producer_orders, name='producer_orders'),
     path('producer/orders/<int:item_pk>/status/', views.producer_update_order_status, name='producer_update_order_status'),
+    
+    
+    #admin 
+    path('admin-panel/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin-panel/user/<int:pk>/delete/', views.admin_delete_user, name='admin_delete_user'),
+    path('admin-panel/product/<int:pk>/delete/', views.admin_delete_product, name='admin_delete_product'),
+    path('admin-panel/category/add/', views.admin_add_category, name='admin_add_category'),
+    path('admin-panel/category/<int:pk>/delete/', views.admin_delete_category, name='admin_delete_category'),
 ]

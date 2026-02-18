@@ -27,10 +27,18 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
+                {% if user.role != 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'marketplace' %}">Marketplace</a>
+                    </li>
+                    {% endif %}
+                {% if user.is_authenticated and user.role == 'admin' %}
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'marketplace' %}">Marketplace</a>
+                    <a class="nav-link" href="{% url 'admin_dashboard' %}">
+                        <i class="bi bi-shield-lock"></i> Admin Panel
+                    </a>
                 </li>
-                {% if user.is_authenticated and user.is_producer %}
+                {% elif user.is_authenticated and user.is_producer %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'producer_dashboard' %}">Dashboard</a>
                 </li>
@@ -44,7 +52,7 @@
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
                 {% if user.is_authenticated %}
-                    {% if not user.is_producer %}
+                    {% if not user.is_producer and user.role != 'admin' %}
                     <li class="nav-item me-2">
                         <a class="nav-link" href="{% url 'cart' %}">
                             <i class="bi bi-cart3"></i>

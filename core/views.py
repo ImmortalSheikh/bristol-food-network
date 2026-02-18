@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import date, timedelta, datetime
+from .models import PaymentSettlement
 
 from .models import (
     User, Product, Category, Cart, CartItem,
@@ -89,6 +90,8 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, f'Welcome back, {user.first_name or user.username}!')
+            if user.role == 'admin':
+                return redirect('admin_dashboard')
             return redirect(request.GET.get('next', 'home'))
         else:
             messages.error(request, 'Invalid username or password.')
@@ -472,3 +475,92 @@ def producer_update_order_status(request, item_pk):
             messages.error(request, 'Status can only move forward in the order lifecycle.')
 
     return redirect('producer_orders')
+
+# admin view
+
+def admin_required(view_func):
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if request.user.role != 'admin':
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@admin_required
+def admin_dashboard(request):
+    from django.db.models import Sum
+    users = User.objects.all()
+    orders = Order.objects.all().order_by('-created_at')
+    products = Product.objects.all()
+    producers = ProducerProfile.objects.all()
+
+    # Financial stats
+    total_revenue = orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_commission = orders.aggregate(Sum('commission_amount'))['commission_amount__sum'] or 0
+    total_producer_payments = total_revenue - total_commission
+
+    # Low stock products
+    low_stock = [p for p in products if p.stock_quantity <= p.low_stock_threshold]
+
+    # Surplus products
+    from datetime import datetime
+    surplus_products = products.filter(is_surplus=True)
+
+    return render(request, 'admin/dashboard.html', {
+        'total_users': users.count(),
+        'total_orders': orders.count(),
+        'total_products': products.count(),
+        'total_producers': producers.count(),
+        'total_revenue': total_revenue,
+        'total_commission': total_commission,
+        'total_producer_payments': total_producer_payments,
+        'recent_orders': orders[:10],
+        'all_users': users,
+        'all_products': products,
+        'all_categories': Category.objects.all(),
+        'low_stock_products': low_stock,
+        'surplus_products': surplus_products,
+    })
+    
+
+
+
+@admin_required
+def admin_delete_user(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    if user == request.user:
+        messages.error(request, "You can't delete yourself.")
+        return redirect('admin_dashboard')
+    user.delete()
+    messages.success(request, f'User "{user.username}" deleted.')
+    return redirect('admin_dashboard')
+
+
+@admin_required
+def admin_delete_product(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    product.delete()
+    messages.success(request, f'Product "{product.name}" deleted.')
+    return redirect('admin_dashboard')
+
+
+@admin_required
+def admin_add_category(request):
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        slug = request.POST.get('slug', '').strip()
+        if name and slug:
+            Category.objects.get_or_create(name=name, slug=slug)
+            messages.success(request, f'Category "{name}" added.')
+        else:
+            messages.error(request, 'Name and slug are required.')
+    return redirect('admin_dashboard')
+
+
+@admin_required
+def admin_delete_category(request, pk):
+    category = get_object_or_404(Category, pk=pk)
+    category.delete()
+    messages.success(request, f'Category "{category.name}" deleted.')
+    return redirect('admin_dashboard')
