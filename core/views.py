@@ -250,7 +250,7 @@ def add_to_cart(request, product_pk):
 
 
 
-@customer_required
+
 @customer_required
 def update_cart_item(request, item_pk):
     item = get_object_or_404(CartItem, pk=item_pk, cart__customer=request.user)
@@ -333,7 +333,7 @@ def checkout(request):
                     f'Not enough stock for {cart_item.product.name}. '
                     f'Available: {cart_item.product.stock_quantity} {cart_item.product.get_unit_display()}.'
                 )
-            return redirect('cart')
+                return redirect('cart')
 
         total = cart.total
 
@@ -387,8 +387,25 @@ def checkout(request):
 @login_required
 def order_confirmation(request, pk):
     order = get_object_or_404(Order, pk=pk, customer=request.user)
-    return render(request, 'cart/order_confirmation.html', {'order': order})
 
+    items = order.items.select_related(
+        'product',
+        'producer',
+        'producer__user'
+    ).order_by('producer__business_name', 'product__name')
+
+    organisation_name = ''
+    if hasattr(order.customer, 'customer_profile'):
+        organisation_name = order.customer.customer_profile.organisation_name
+
+    is_bulk_order = (order.customer.role == 'community_group')
+
+    return render(request, 'cart/order_confirmation.html', {
+        'order': order,
+        'items': items,
+        'organisation_name': organisation_name,
+        'is_bulk_order': is_bulk_order,
+    })
 
 # ─────────────────────────────────────────────────────────────
 # CUSTOMER VIEWS

@@ -1,42 +1,111 @@
 {% extends 'base.html' %}
 {% block title %}Order Confirmed — Bristol Food Network{% endblock %}
+
 {% block content %}
+
 <div class="text-center py-4">
-    <div class="fs-1 mb-3">✅</div>
-    <h2 class="text-success">Order Placed Successfully!</h2>
+    <h2 class="text-success fw-semibold">Order Placed Successfully</h2>
+
+    {% if is_bulk_order %}
+        <span class="badge bg-warning text-dark mb-2">
+            BULK ORDER (Community Group)
+        </span>
+    {% endif %}
+
     <p class="lead">Order <strong>#{{ order.pk }}</strong> has been received.</p>
-    <p class="text-muted">Delivery expected: <strong>{{ order.delivery_date|date:'d M Y' }}</strong></p>
+
+    {% if organisation_name %}
+        <p class="mb-1">
+            <strong>Organisation:</strong> {{ organisation_name }}
+        </p>
+    {% endif %}
+
+    <p class="text-muted">
+        Delivery expected: <strong>{{ order.delivery_date|date:'d M Y' }}</strong>
+    </p>
 </div>
+
 <div class="row justify-content-center">
     <div class="col-md-7">
+
+        <!-- Order Summary -->
         <div class="card p-4 mb-3">
             <h5>Order Details</h5>
+
             <table class="table table-sm">
                 <tbody>
-                    {% for item in order.items.all %}
+                    {% for item in items %}
                     <tr>
                         <td>{{ item.product.name }} × {{ item.quantity }}</td>
                         <td class="text-end">£{{ item.subtotal }}</td>
                     </tr>
                     {% endfor %}
+
                     <tr class="table-light">
                         <td><strong>Total</strong></td>
                         <td class="text-end"><strong>£{{ order.total_amount }}</strong></td>
                     </tr>
+
                     <tr>
-                        <td class="text-muted small">Network Commission (5%)</td>
-                        <td class="text-end text-muted small">£{{ order.commission_amount }}</td>
+                        <td class="text-muted small">
+                            Network Commission (5%)
+                        </td>
+                        <td class="text-end text-muted small">
+                            £{{ order.commission_amount }}
+                        </td>
                     </tr>
                 </tbody>
             </table>
+
             <p class="text-muted small mt-2">
-                <i class="bi bi-geo-alt"></i> Delivery to: {{ order.delivery_address }}, {{ order.delivery_postcode }}
+                <i class="bi bi-geo-alt"></i>
+                Delivery to:
+                {{ order.delivery_address }}, {{ order.delivery_postcode }}
+            </p>
+
+            {% if order.special_instructions %}
+            <p class="text-muted small mt-1">
+                <strong>Delivery instructions:</strong>
+                {{ order.special_instructions }}
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Producer Contact Details -->
+        <div class="card p-4 mb-3">
+            <h5>Supplier Contact Details</h5>
+            <ul class="list-group list-group-flush">
+
+                {% for item in items %}
+                    {% ifchanged item.producer.pk %}
+                        <li class="list-group-item">
+                            <strong>{{ item.producer.business_name }}</strong><br>
+                            Contact: {{ item.producer.contact_name }}<br>
+                            Email: {{ item.producer.user.email }}<br>
+                            {% if item.producer.user.phone %}
+                                Phone: {{ item.producer.user.phone }}
+                            {% endif %}
+                        </li>
+                    {% endifchanged %}
+                {% endfor %}
+
+            </ul>
+
+            <p class="text-muted small mt-2 mb-0">
+                Use these contact details if you need to coordinate delivery.
             </p>
         </div>
+
         <div class="d-flex gap-2 justify-content-center">
-            <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary">View My Orders</a>
-            <a href="{% url 'marketplace' %}" class="btn btn-primary">Continue Shopping</a>
+            <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary">
+                View My Orders
+            </a>
+            <a href="{% url 'marketplace' %}" class="btn btn-primary">
+                Continue Shopping
+            </a>
         </div>
+
     </div>
 </div>
+
 {% endblock %}

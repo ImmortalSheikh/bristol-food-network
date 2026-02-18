@@ -20,14 +20,38 @@
             {% for item in order_items %}
             <tr>
                 <td><strong>#{{ item.order.pk }}</strong></td>
+
                 <td>
-                    {{ item.order.customer.get_full_name|default:item.order.customer.username }}<br>
-                    <small class="text-muted">{{ item.order.delivery_address|truncatechars:30 }}</small>
+                    {{ item.order.customer.get_full_name|default:item.order.customer.username }}
+
+                    {% if item.order.customer.role == "community_group" %}
+                        <div class="mt-1">
+                            <span class="badge bg-warning text-dark">BULK ORDER (Community Group)</span>
+                        </div>
+                    {% endif %}
+
+                    {% if item.order.customer.customer_profile.organisation_name %}
+                        <div class="small mt-1">
+                            <strong>Organisation:</strong> {{ item.order.customer.customer_profile.organisation_name }}
+                        </div>
+                    {% endif %}
+
+                    {% if item.order.special_instructions %}
+                        <div class="small text-muted mt-1">
+                            <strong>Instructions:</strong> {{ item.order.special_instructions|truncatechars:60 }}
+                        </div>
+                    {% endif %}
+
+                    <small class="text-muted d-block mt-1">
+                        {{ item.order.delivery_address|truncatechars:30 }}
+                    </small>
                 </td>
+
                 <td>{{ item.product.name }}</td>
                 <td>{{ item.quantity }} {{ item.product.get_unit_display }}</td>
                 <td>£{{ item.subtotal }}</td>
                 <td>{{ item.order.delivery_date|date:'d M Y' }}</td>
+
                 <td>
                     <span class="badge
                         {% if item.producer_status == 'delivered' %}bg-success
@@ -37,12 +61,14 @@
                         {{ item.get_producer_status_display }}
                     </span>
                 </td>
+
                 <td>
                     {% if item.producer_status != 'delivered' %}
                     <button type="button" class="btn btn-sm btn-outline-primary"
                             data-bs-toggle="modal" data-bs-target="#statusModal{{ item.pk }}">
                         Update Status
                     </button>
+
                     <!-- Modal -->
                     <div class="modal fade" id="statusModal{{ item.pk }}" tabindex="-1">
                         <div class="modal-dialog">

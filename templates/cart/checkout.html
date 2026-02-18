@@ -2,6 +2,13 @@
 {% block title %}Checkout — Bristol Food Network{% endblock %}
 {% block content %}
 <h2 class="mb-4">Checkout</h2>
+
+{% if request.user.role == "community_group" and customer_profile.organisation_name %}
+  <div class="alert alert-info">
+    Ordering for: <strong>{{ customer_profile.organisation_name }}</strong>
+  </div>
+{% endif %}
+
 <div class="row">
     <div class="col-md-7">
         <div class="card p-4">
