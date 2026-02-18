@@ -213,35 +213,72 @@ def add_to_cart(request, product_pk):
         return redirect('product_detail', pk=product_pk)
 
     form = CartItemForm(request.POST)
+
     if form.is_valid():
         qty = form.cleaned_data['quantity']
+
+        # ✅ TC-017: validate against stock/capacity
+        if qty > product.stock_quantity:
+            messages.error(
+                request,
+                f'Only {product.stock_quantity} {product.get_unit_display()} available.'
+            )
+            return redirect('product_detail', pk=product_pk)
+
         cart = _get_or_create_cart(request.user)
         item, created = CartItem.objects.get_or_create(
             cart=cart, product=product, defaults={'quantity': qty}
         )
+
         if not created:
-            item.quantity += qty
+            new_qty = item.quantity + qty
+            if new_qty > product.stock_quantity:
+                messages.error(
+                    request,
+                    f'Cannot add that much. Only {product.stock_quantity} {product.get_unit_display()} available.'
+                )
+                return redirect('cart')
+            item.quantity = new_qty
             item.save()
+
         messages.success(request, f'Added {product.name} to your cart.')
+
     else:
         messages.error(request, 'Invalid quantity.')
+
     return redirect('cart')
 
 
+
+@customer_required
 @customer_required
 def update_cart_item(request, item_pk):
     item = get_object_or_404(CartItem, pk=item_pk, cart__customer=request.user)
     try:
         qty = Decimal(request.POST.get('quantity', '0'))
+
         if qty <= 0:
             item.delete()
             messages.info(request, 'Item removed from cart.')
-        else:
-            item.quantity = qty
-            item.save()
+            return redirect('cart')
+
+        # ✅ TC-017: validate against stock/capacity inside cart too
+        if qty > item.product.stock_quantity:
+            messages.error(
+                request,
+                f'Only {item.product.stock_quantity} {item.product.get_unit_display()} available for {item.product.name}.'
+            )
+            return redirect('cart')
+
+        item.quantity = qty
+        item.save()
+        messages.success(request, 'Cart updated.')
+
     except Exception:
         messages.error(request, 'Invalid quantity.')
+
     return redirect('cart')
+
 
 
 @customer_required
@@ -289,6 +326,15 @@ def checkout(request):
 
         # Build the order
         items = cart.cart_items.select_related('product', 'product__producer').all()
+        for cart_item in items:
+            if cart_item.quantity > cart_item.product.stock_quantity:
+                messages.error(
+                    request,
+                    f'Not enough stock for {cart_item.product.name}. '
+                    f'Available: {cart_item.product.stock_quantity} {cart_item.product.get_unit_display()}.'
+                )
+            return redirect('cart')
+
         total = cart.total
 
         order = Order.objects.create(
