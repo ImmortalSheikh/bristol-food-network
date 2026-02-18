@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Producer Dashboard — Bristol Food Network{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>Dashboard</h2>
+        <p class="text-muted mb-0">{{ profile.business_name }}</p>
+    </div>
+    <a href="{% url 'product_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Add New Product
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="fs-2 fw-bold text-success">{{ products|length }}</div>
+            <div class="text-muted small">Total Products</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="fs-2 fw-bold text-warning">{{ pending_orders|length }}</div>
+            <div class="text-muted small">Pending Orders</div>
+        </div>
+    </div>
+</div>
+
+<h5>Incoming Orders</h5>
+{% if pending_orders %}
+<div class="table-responsive mb-4">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Value</th>
+                <th>Delivery Date</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in pending_orders %}
+            <tr>
+                <td>#{{ item.order.pk }}</td>
+                <td>{{ item.order.customer.get_full_name|default:item.order.customer.username }}</td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }} {{ item.product.get_unit_display }}</td>
+                <td>£{{ item.subtotal }}</td>
+                <td>{{ item.order.delivery_date|date:'d M Y' }}</td>
+                <td><span class="badge bg-warning text-dark">{{ item.get_producer_status_display }}</span></td>
+                <td><a href="{% url 'producer_orders' %}" class="btn btn-sm btn-outline-primary">Manage</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No pending orders.</p>
+{% endif %}
+
+<h5>Your Products</h5>
+<div class="row g-3">
+    {% for product in products|slice:":6" %}
+    <div class="col-md-4">
+        <div class="card p-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <h6 class="mb-1">{{ product.name }}</h6>
+                <span class="badge {% if product.availability == 'available' or product.availability == 'in_season' %}bg-success{% else %}bg-secondary{% endif %}">
+                    {{ product.get_availability_display }}
+                </span>
+            </div>
+            <small class="text-muted">Stock: {{ product.stock_quantity }} {{ product.get_unit_display }}</small>
+            {% if product.stock_quantity <= product.low_stock_threshold %}
+            <div class="alert alert-warning py-1 px-2 mt-2 small mb-0">
+                <i class="bi bi-exclamation-triangle"></i> Low stock!
+            </div>
+            {% endif %}
+            <div class="mt-2">
+                <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

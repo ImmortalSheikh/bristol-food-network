@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}My Orders — Bristol Food Network{% endblock %}
+{% block content %}
+<h2 class="mb-4">My Orders</h2>
+{% if not orders %}
+<div class="text-center py-5">
+    <div class="fs-1 mb-3">📦</div>
+    <h4>No orders yet</h4>
+    <a href="{% url 'marketplace' %}" class="btn btn-primary mt-3">Start Shopping</a>
+</div>
+{% else %}
+{% for order in orders %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <strong>Order #{{ order.pk }}</strong>
+            <small class="text-muted ms-2">{{ order.created_at|date:'d M Y' }}</small>
+        </div>
+        <div>
+            <span class="badge
+                {% if order.status == 'delivered' %}bg-success
+                {% elif order.status == 'ready' %}bg-info
+                {% elif order.status == 'confirmed' %}bg-primary
+                {% elif order.status == 'cancelled' %}bg-danger
+                {% else %}bg-warning text-dark{% endif %}">
+                {{ order.get_status_display }}
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table table-sm mb-0">
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td>{{ item.product.name }} × {{ item.quantity }}</td>
+                        <td class="text-muted small">{{ item.producer.business_name }}</td>
+                        <td class="text-end">£{{ item.subtotal }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="fw-bold text-success fs-5">£{{ order.total_amount }}</div>
+                <div class="text-muted small">
+                    <i class="bi bi-calendar"></i> Delivery: {{ order.delivery_date|date:'d M Y' }}
+                </div>
+                <div class="text-muted small">
+                    <i class="bi bi-geo-alt"></i> {{ order.delivery_postcode }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

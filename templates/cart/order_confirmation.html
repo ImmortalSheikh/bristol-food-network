@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Order Confirmed — Bristol Food Network{% endblock %}
+{% block content %}
+<div class="text-center py-4">
+    <div class="fs-1 mb-3">✅</div>
+    <h2 class="text-success">Order Placed Successfully!</h2>
+    <p class="lead">Order <strong>#{{ order.pk }}</strong> has been received.</p>
+    <p class="text-muted">Delivery expected: <strong>{{ order.delivery_date|date:'d M Y' }}</strong></p>
+</div>
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card p-4 mb-3">
+            <h5>Order Details</h5>
+            <table class="table table-sm">
+                <tbody>
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td>{{ item.product.name }} × {{ item.quantity }}</td>
+                        <td class="text-end">£{{ item.subtotal }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="table-light">
+                        <td><strong>Total</strong></td>
+                        <td class="text-end"><strong>£{{ order.total_amount }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted small">Network Commission (5%)</td>
+                        <td class="text-end text-muted small">£{{ order.commission_amount }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="text-muted small mt-2">
+                <i class="bi bi-geo-alt"></i> Delivery to: {{ order.delivery_address }}, {{ order.delivery_postcode }}
+            </p>
+        </div>
+        <div class="d-flex gap-2 justify-content-center">
+            <a href="{% url 'customer_orders' %}" class="btn btn-outline-primary">View My Orders</a>
+            <a href="{% url 'marketplace' %}" class="btn btn-primary">Continue Shopping</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

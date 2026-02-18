@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Bristol Food Network — Local Food Marketplace{% endblock %}
+{% block content %}
+<div class="row align-items-center py-4 mb-4 bg-light rounded">
+    <div class="col-md-8">
+        <h1 class="display-5 fw-bold text-success">Fresh, Local, Bristol</h1>
+        <p class="lead">Shop directly from farms and producers within 20 miles of Bristol city centre.</p>
+        <a href="{% url 'marketplace' %}" class="btn btn-primary btn-lg me-2">Browse Products</a>
+        {% if not user.is_authenticated %}
+        <a href="{% url 'register' %}" class="btn btn-outline-success btn-lg">Join the Network</a>
+        {% endif %}
+    </div>
+    <div class="col-md-4 text-center fs-1">🌿🥕🧀🍓</div>
+</div>
+
+<h3 class="mb-3">Shop by Category</h3>
+<div class="row g-3 mb-5">
+    {% for category in categories %}
+    <div class="col-6 col-md-4 col-lg-2">
+        <a href="{% url 'marketplace' %}?category={{ category.slug }}" class="text-decoration-none">
+            <div class="card text-center h-100 py-3">
+                <div class="card-body">
+                    <div class="fs-2 mb-1">🛒</div>
+                    <small class="fw-semibold text-dark">{{ category.name }}</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% empty %}
+    <p class="text-muted">No categories yet.</p>
+    {% endfor %}
+</div>
+
+<h3 class="mb-3">Featured Products</h3>
+<div class="row g-3">
+    {% for product in featured_products %}
+    <div class="col-md-3">
+        <div class="card h-100">
+            {% if product.image %}
+            <img src="{{ product.image.url }}" class="card-img-top" style="height:160px;object-fit:cover;" alt="{{ product.name }}">
+            {% else %}
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:160px;font-size:3rem;">🥬</div>
+            {% endif %}
+            <div class="card-body">
+                <h6 class="card-title mb-1">{{ product.name }}</h6>
+                <small class="text-muted">{{ product.producer.business_name }}</small>
+                <div class="mt-2">
+                    {% if product.is_organic %}<span class="badge badge-organic me-1">Organic</span>{% endif %}
+                    {% if product.availability == 'in_season' %}<span class="badge seasonal-badge">In Season</span>{% endif %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <strong class="text-success">£{{ product.discounted_price }}/{{ product.get_unit_display }}</strong>
+                    <a href="{% url 'product_detail' product.pk %}" class="btn btn-sm btn-outline-success">View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-muted">No products available yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

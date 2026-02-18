@@ -1,0 +1,311 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
+
+
+class User(AbstractUser):
+    """Extended user model with role-based access control"""
+    ROLE_CHOICES = [
+        ('customer', 'Customer'),
+        ('producer', 'Producer'),
+        ('community_group', 'Community Group'),
+        ('restaurant', 'Restaurant'),
+        ('admin', 'Admin'),
+    ]
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True)
+    postcode = models.CharField(max_length=10, blank=True)
+
+    def is_producer(self):
+        return self.role == 'producer'
+
+    def is_customer(self):
+        return self.role in ('customer', 'community_group', 'restaurant')
+
+    def __str__(self):
+        return f"{self.username} ({self.get_role_display()})"
+
+
+class ProducerProfile(models.Model):
+    """Extended profile for producer accounts"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='producer_profile')
+    business_name = models.CharField(max_length=200)
+    contact_name = models.CharField(max_length=100)
+    farm_address = models.TextField()
+    farm_postcode = models.CharField(max_length=10)
+    description = models.TextField(blank=True)
+    lead_time_hours = models.PositiveIntegerField(
+        default=48,
+        help_text="Minimum hours needed to prepare orders"
+    )
+
+    def __str__(self):
+        return self.business_name
+
+
+class CustomerProfile(models.Model):
+    """Extended profile for customer accounts"""
+    CUSTOMER_TYPE_CHOICES = [
+        ('individual', 'Individual'),
+        ('family', 'Family'),
+        ('community_group', 'Community Group'),
+        ('restaurant', 'Restaurant/Cafe'),
+    ]
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
+    customer_type = models.CharField(max_length=20, choices=CUSTOMER_TYPE_CHOICES, default='individual')
+    organisation_name = models.CharField(max_length=200, blank=True)
+    delivery_address = models.TextField()
+    delivery_postcode = models.CharField(max_length=10)
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} ({self.get_customer_type_display()})"
+
+
+class Category(models.Model):
+    """Product categories"""
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(unique=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name_plural = 'categories'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+# UK 14 major allergens (Food Information Regulations 2014)
+ALLERGEN_CHOICES = [
+    ('celery', 'Celery'),
+    ('gluten', 'Gluten (Wheat/Rye/Barley/Oats)'),
+    ('crustaceans', 'Crustaceans'),
+    ('eggs', 'Eggs'),
+    ('fish', 'Fish'),
+    ('lupin', 'Lupin'),
+    ('milk', 'Milk'),
+    ('molluscs', 'Molluscs'),
+    ('mustard', 'Mustard'),
+    ('nuts', 'Tree Nuts'),
+    ('peanuts', 'Peanuts'),
+    ('sesame', 'Sesame'),
+    ('soya', 'Soya'),
+    ('sulphites', 'Sulphur Dioxide/Sulphites'),
+]
+
+
+class Product(models.Model):
+    """Products listed by producers on the marketplace"""
+    AVAILABILITY_CHOICES = [
+        ('available', 'Available'),
+        ('in_season', 'In Season'),
+        ('out_of_season', 'Out of Season'),
+        ('unavailable', 'Unavailable'),
+    ]
+    UNIT_CHOICES = [
+        ('kg', 'Kilogram (kg)'),
+        ('g', 'Gram (g)'),
+        ('litre', 'Litre'),
+        ('dozen', 'Dozen'),
+        ('each', 'Each'),
+        ('bunch', 'Bunch'),
+        ('pack', 'Pack'),
+    ]
+
+    producer = models.ForeignKey(ProducerProfile, on_delete=models.CASCADE, related_name='products')
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    price = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))]
+    )
+    unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default='each')
+    stock_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    low_stock_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=10)
+    availability = models.CharField(max_length=20, choices=AVAILABILITY_CHOICES, default='available')
+    is_organic = models.BooleanField(default=False)
+    harvest_date = models.DateField(null=True, blank=True)
+    best_before_date = models.DateField(null=True, blank=True)
+    season_start_month = models.PositiveIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    season_end_month = models.PositiveIntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    image = models.ImageField(upload_to='products/', null=True, blank=True)
+    is_surplus = models.BooleanField(default=False)
+    surplus_discount_percent = models.PositiveIntegerField(
+        default=0,
+        validators=[MaxValueValidator(100)]
+    )
+    surplus_expiry = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def discounted_price(self):
+        if self.is_surplus and self.surplus_discount_percent > 0:
+            discount = self.price * Decimal(self.surplus_discount_percent) / 100
+            return round(self.price - discount, 2)
+        return self.price
+
+    @property
+    def is_available(self):
+        return self.availability in ('available', 'in_season') and self.stock_quantity > 0
+
+    def __str__(self):
+        return f"{self.name} — {self.producer.business_name}"
+
+    class Meta:
+        ordering = ['name']
+
+
+class ProductAllergen(models.Model):
+    """Allergens associated with a product (all 14 UK major allergens supported)"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_allergens')
+    allergen = models.CharField(max_length=20, choices=ALLERGEN_CHOICES)
+
+    class Meta:
+        unique_together = ('product', 'allergen')
+
+    def __str__(self):
+        return f"{self.product.name} — {self.get_allergen_display()}"
+
+
+class Order(models.Model):
+    """A customer order (can span multiple producers)"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('ready', 'Ready for Collection/Delivery'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    COMMISSION_RATE = Decimal('0.05')  # 5% network commission
+
+    customer = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    delivery_address = models.TextField()
+    delivery_postcode = models.CharField(max_length=10)
+    delivery_date = models.DateField()
+    special_instructions = models.TextField(blank=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_reference = models.CharField(max_length=100, blank=True)
+    payment_status = models.CharField(max_length=20, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def calculate_commission(self):
+        self.commission_amount = round(self.total_amount * self.COMMISSION_RATE, 2)
+        return self.commission_amount
+
+    def __str__(self):
+        return f"Order #{self.pk} — {self.customer.username}"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class OrderItem(models.Model):
+    """A single product line within an order"""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    producer = models.ForeignKey(ProducerProfile, on_delete=models.PROTECT)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=8, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    # Each producer manages their own portion's status
+    producer_status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES, default='pending')
+    producer_notes = models.TextField(blank=True)
+
+    def save(self, *args, **kwargs):
+        self.subtotal = round(Decimal(str(self.quantity)) * self.unit_price, 2)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.product.name} ×{self.quantity} (Order #{self.order.pk})"
+
+
+class Cart(models.Model):
+    """Shopping cart — one per customer"""
+    customer = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def total(self):
+        return round(sum(item.subtotal for item in self.cart_items.all()), 2)
+
+    @property
+    def item_count(self):
+        return self.cart_items.count()
+
+    def __str__(self):
+        return f"Cart — {self.customer.username}"
+
+
+class CartItem(models.Model):
+    """A product in a shopping cart"""
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))]
+    )
+
+    @property
+    def subtotal(self):
+        return round(Decimal(str(self.quantity)) * self.product.discounted_price, 2)
+
+    class Meta:
+        unique_together = ('cart', 'product')
+
+    def __str__(self):
+        return f"{self.product.name} ×{self.quantity}"
+
+
+class PaymentSettlement(models.Model):
+    """Weekly payment settlements to producers (95% of order value)"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    producer = models.ForeignKey(ProducerProfile, on_delete=models.PROTECT, related_name='settlements')
+    week_start = models.DateField()
+    week_end = models.DateField()
+    gross_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    commission_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    net_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    payment_reference = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Settlement {self.producer.business_name} ({self.week_start} – {self.week_end})"
+
+
+class OrderStatusHistory(models.Model):
+    """Full audit trail of all order status changes"""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='status_history')
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, null=True, blank=True)
+    old_status = models.CharField(max_length=20, blank=True)
+    new_status = models.CharField(max_length=20)
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    notes = models.TextField(blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = 'order status histories'
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"Order #{self.order.pk}: {self.old_status} → {self.new_status}"

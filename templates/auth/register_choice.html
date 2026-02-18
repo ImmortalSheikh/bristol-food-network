@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Register — Bristol Food Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <h2 class="mb-4">Join Bristol Food Network</h2>
+        <p class="text-muted mb-5">Are you a producer or a customer?</p>
+        <div class="row g-4">
+            <div class="col-6">
+                <div class="card h-100 p-4">
+                    <div class="fs-1 mb-3">🌾</div>
+                    <h4>I'm a Producer</h4>
+                    <p class="text-muted small">Farm, bakery, or food producer looking to sell locally</p>
+                    <a href="{% url 'register_producer' %}" class="btn btn-primary mt-auto">Register as Producer</a>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card h-100 p-4">
+                    <div class="fs-1 mb-3">🛒</div>
+                    <h4>I'm a Customer</h4>
+                    <p class="text-muted small">Individual, family, community group, or restaurant</p>
+                    <a href="{% url 'register_customer' %}" class="btn btn-success mt-auto">Register as Customer</a>
+                </div>
+            </div>
+        </div>
+        <p class="mt-4 text-muted">Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Order Management — Bristol Food Network{% endblock %}
+{% block content %}
+<h2 class="mb-4">Order Management</h2>
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Value</th>
+                <th>Delivery Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order_items %}
+            <tr>
+                <td><strong>#{{ item.order.pk }}</strong></td>
+                <td>
+                    {{ item.order.customer.get_full_name|default:item.order.customer.username }}<br>
+                    <small class="text-muted">{{ item.order.delivery_address|truncatechars:30 }}</small>
+                </td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }} {{ item.product.get_unit_display }}</td>
+                <td>£{{ item.subtotal }}</td>
+                <td>{{ item.order.delivery_date|date:'d M Y' }}</td>
+                <td>
+                    <span class="badge
+                        {% if item.producer_status == 'delivered' %}bg-success
+                        {% elif item.producer_status == 'ready' %}bg-info
+                        {% elif item.producer_status == 'confirmed' %}bg-primary
+                        {% else %}bg-warning text-dark{% endif %}">
+                        {{ item.get_producer_status_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if item.producer_status != 'delivered' %}
+                    <button type="button" class="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal" data-bs-target="#statusModal{{ item.pk }}">
+                        Update Status
+                    </button>
+                    <!-- Modal -->
+                    <div class="modal fade" id="statusModal{{ item.pk }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="post" action="{% url 'producer_update_order_status' item.pk %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Update Order #{{ item.order.pk }} Status</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">New Status</label>
+                                            <select name="status" class="form-select">
+                                                {% if item.producer_status == 'pending' %}
+                                                <option value="confirmed">Confirmed</option>
+                                                {% elif item.producer_status == 'confirmed' %}
+                                                <option value="ready">Ready for Collection/Delivery</option>
+                                                {% elif item.producer_status == 'ready' %}
+                                                <option value="delivered">Delivered</option>
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Notes (optional)</label>
+                                            <textarea name="notes" class="form-control" rows="2"
+                                                      placeholder="e.g. Products prepared and ready"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Update Status</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">No orders yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
