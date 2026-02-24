@@ -56,7 +56,7 @@
 <script id="product-data" type="application/json">
 [
 {% for p in products %}
-  {"id": {{ p.pk }}, "name": "{{ p.name|escapejs }}", "producer": "{{ p.producer.business_name|escapejs }}", "unit": "{{ p.get_unit_display|escapejs }}", "price": {{ p.discounted_price }}}{% if not forloop.last %},{% endif %}
+  {"id": {{ p.pk }}, "name": "{{ p.name|escapejs }}", "producer": "{{ p.producer.business_name|escapejs }}", "unit": "{{ p.get_unit_display|escapejs }}", "price": {{ p.discounted_price }}, "stock": {{ p.stock_quantity }}}{% if not forloop.last %},{% endif %}
 {% endfor %}
 ]
 </script>
@@ -79,7 +79,7 @@ function buildSelect(selectedId) {
     html += '<option value="">— choose product —</option>';
     PRODUCTS.forEach(p => {
         const sel = (p.id == selectedId) ? ' selected' : '';
-        html += `<option value="${p.id}" data-price="${p.price}" data-unit="${p.unit}"${sel}>${p.name} (${p.producer})</option>`;
+        html += `<option value="${p.id}" data-price="${p.price}" data-unit="${p.unit}" data-stock="${p.stock}"${sel}>${p.name} (${p.producer}) — ${p.stock} in stock</option>`;
     });
     html += '</select>';
     return html;
@@ -95,8 +95,8 @@ function addRow(productId, qty, note) {
         <div class="col-6">${buildSelect(productId || '')}</div>
         <div class="col-3">
             <input type="number" name="quantity[]" class="form-control form-control-sm"
-                   placeholder="Qty" min="0.01" step="0.1" value="${qty || ''}"
-                   oninput="updateTotal()" required>
+                   placeholder="Qty" min="1" step="1" value="${qty || ''}"
+                   oninput="validateQty(this); updateTotal()" required>
         </div>
         <div class="col-2">
             <input type="text" name="item_notes[]" class="form-control form-control-sm"
@@ -121,15 +121,45 @@ function removeRow(btn) {
 }
 
 function rowChanged(sel) {
+    const row  = sel.closest('.item-row');
+    const qtyInput = row.querySelector('input[name="quantity[]"]');
+    const opt  = sel.options[sel.selectedIndex];
+    // Update max stock on qty input when product changes
+    if (opt && opt.dataset.stock) {
+        qtyInput.max = opt.dataset.stock;
+    } else {
+        qtyInput.removeAttribute('max');
+    }
     updateRowHint(sel);
     updateTotal();
+}
+
+function validateQty(input) {
+    const row  = input.closest('.item-row');
+    const sel  = row.querySelector('select');
+    const opt  = sel.options[sel.selectedIndex];
+    const hint = row.querySelector('.row-unit-hint');
+    if (!opt || !opt.dataset.stock) return;
+    const stock = parseFloat(opt.dataset.stock);
+    const qty   = parseFloat(input.value) || 0;
+    if (qty > stock) {
+        input.setCustomValidity(`Only ${stock} ${opt.dataset.unit} in stock`);
+        hint.textContent = `⚠ Only ${stock} ${opt.dataset.unit} available`;
+        hint.classList.add('text-danger');
+        hint.classList.remove('text-muted');
+    } else {
+        input.setCustomValidity('');
+        updateRowHint(sel);
+        hint.classList.remove('text-danger');
+        hint.classList.add('text-muted');
+    }
 }
 
 function updateRowHint(sel) {
     const opt  = sel.options[sel.selectedIndex];
     const hint = sel.closest('.item-row').querySelector('.row-unit-hint');
     if (opt && opt.dataset.unit) {
-        hint.textContent = `Unit: ${opt.dataset.unit}  ·  £${parseFloat(opt.dataset.price).toFixed(2)} each`;
+        hint.textContent = `Unit: ${opt.dataset.unit}  ·  £${parseFloat(opt.dataset.price).toFixed(2)} each  ·  ${opt.dataset.stock} in stock`;
     } else {
         hint.textContent = '';
     }
