@@ -6,8 +6,8 @@ from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import date, timedelta, datetime
-from .models import PaymentSettlement
 
+from .models import PaymentSettlement
 from .models import (
     User, Product, Category, Cart, CartItem,
     Order, OrderItem, ProducerProfile, CustomerProfile, OrderStatusHistory
@@ -16,7 +16,6 @@ from .forms import (
     ProducerRegistrationForm, CustomerRegistrationForm,
     LoginForm, ProductForm, CartItemForm
 )
-
 
 # ─────────────────────────────────────────────────────────────
 # DECORATORS
@@ -33,7 +32,7 @@ def producer_required(view_func):
 
 
 def customer_required(view_func):
-    """Restrict a view to logged-in customers only."""
+    """Restrict a view to logged-in customers only (non-producers)."""
     @login_required
     def wrapper(request, *args, **kwargs):
         if request.user.is_producer():
@@ -84,6 +83,7 @@ def register_customer(request):
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('home')
+
     if request.method == 'POST':
         form = LoginForm(request, data=request.POST)
         if form.is_valid():
@@ -97,6 +97,7 @@ def login_view(request):
             messages.error(request, 'Invalid username or password.')
     else:
         form = LoginForm(request)
+
     return render(request, 'auth/login.html', {'form': form})
 
 
@@ -117,6 +118,7 @@ def home(request):
         availability__in=['available', 'in_season'],
         stock_quantity__gt=0
     ).select_related('producer', 'category').order_by('-created_at')[:8]
+
     return render(request, 'home.html', {
         'categories': categories,
         'featured_products': featured,
@@ -139,12 +141,14 @@ def marketplace(request):
 
     if category_slug:
         products = products.filter(category__slug=category_slug)
+
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
             Q(description__icontains=search_query) |
             Q(producer__business_name__icontains=search_query)
         )
+
     if organic_only:
         products = products.filter(is_organic=True)
 
@@ -208,77 +212,77 @@ def cart_view(request):
 @customer_required
 def add_to_cart(request, product_pk):
     product = get_object_or_404(Product, pk=product_pk)
+
     if not product.is_available:
         messages.error(request, f'"{product.name}" is not currently available.')
         return redirect('product_detail', pk=product_pk)
 
     form = CartItemForm(request.POST)
 
-    if form.is_valid():
-        qty = form.cleaned_data['quantity']
-
-        # ✅ TC-017: validate against stock/capacity
-        if qty > product.stock_quantity:
-            messages.error(
-                request,
-                f'Only {product.stock_quantity} {product.get_unit_display()} available.'
-            )
-            return redirect('product_detail', pk=product_pk)
-
-        cart = _get_or_create_cart(request.user)
-        item, created = CartItem.objects.get_or_create(
-            cart=cart, product=product, defaults={'quantity': qty}
-        )
-
-        if not created:
-            new_qty = item.quantity + qty
-            if new_qty > product.stock_quantity:
-                messages.error(
-                    request,
-                    f'Cannot add that much. Only {product.stock_quantity} {product.get_unit_display()} available.'
-                )
-                return redirect('cart')
-            item.quantity = new_qty
-            item.save()
-
-        messages.success(request, f'Added {product.name} to your cart.')
-
-    else:
+    if not form.is_valid():
         messages.error(request, 'Invalid quantity.')
+        return redirect('product_detail', pk=product_pk)
 
+    qty = form.cleaned_data['quantity']
+
+    # ✅ TC-017: validate against stock/capacity
+    if qty > product.stock_quantity:
+        messages.warning(
+            request,
+            f'Not enough stock — only {product.stock_quantity} {product.get_unit_display()} available. '
+            f'Please reduce the quantity.'
+        )
+        return redirect('product_detail', pk=product_pk)
+
+    cart = _get_or_create_cart(request.user)
+    item, created = CartItem.objects.get_or_create(
+        cart=cart, product=product, defaults={'quantity': qty}
+    )
+
+    if not created:
+        new_qty = item.quantity + qty
+        if new_qty > product.stock_quantity:
+            messages.warning(
+                request,
+                f'Not enough stock — only {product.stock_quantity} {product.get_unit_display()} available. '
+                f'Please reduce the quantity.'
+            )
+            return redirect('cart')
+        item.quantity = new_qty
+        item.save()
+
+    messages.success(request, f'Added {product.name} to your cart.')
     return redirect('cart')
-
-
 
 
 @customer_required
 def update_cart_item(request, item_pk):
     item = get_object_or_404(CartItem, pk=item_pk, cart__customer=request.user)
+
     try:
         qty = Decimal(request.POST.get('quantity', '0'))
-
-        if qty <= 0:
-            item.delete()
-            messages.info(request, 'Item removed from cart.')
-            return redirect('cart')
-
-        # ✅ TC-017: validate against stock/capacity inside cart too
-        if qty > item.product.stock_quantity:
-            messages.error(
-                request,
-                f'Only {item.product.stock_quantity} {item.product.get_unit_display()} available for {item.product.name}.'
-            )
-            return redirect('cart')
-
-        item.quantity = qty
-        item.save()
-        messages.success(request, 'Cart updated.')
-
     except Exception:
         messages.error(request, 'Invalid quantity.')
+        return redirect('cart')
 
+    if qty <= 0:
+        item.delete()
+        messages.info(request, 'Item removed from cart.')
+        return redirect('cart')
+
+    # ✅ TC-017: validate against stock/capacity inside cart too
+    if qty > item.product.stock_quantity:
+        messages.warning(
+            request,
+            f'Not enough stock — only {item.product.stock_quantity} {item.product.get_unit_display()} available '
+            f'for {item.product.name}.'
+        )
+        return redirect('cart')
+
+    item.quantity = qty
+    item.save()
+    messages.success(request, 'Cart updated.')
     return redirect('cart')
-
 
 
 @customer_required
@@ -296,6 +300,7 @@ def remove_from_cart(request, item_pk):
 @customer_required
 def checkout(request):
     cart = _get_or_create_cart(request.user)
+
     if not cart.cart_items.exists():
         messages.error(request, 'Your cart is empty.')
         return redirect('cart')
@@ -306,7 +311,7 @@ def checkout(request):
         messages.error(request, 'Please complete your profile before checking out.')
         return redirect('cart')
 
-    min_delivery = date.today() + timedelta(days=2)   # 48-hour minimum lead time (TC-007)
+    min_delivery = date.today() + timedelta(days=2)  # 48-hour minimum lead time (TC-007)
 
     if request.method == 'POST':
         delivery_address = request.POST.get('delivery_address', '').strip()
@@ -324,11 +329,11 @@ def checkout(request):
             messages.error(request, 'Delivery date must be at least 48 hours from now.')
             return redirect('checkout')
 
-        # Build the order
+        # ✅ Final stock check before creating the order (TC-017 robustness)
         items = cart.cart_items.select_related('product', 'product__producer').all()
         for cart_item in items:
             if cart_item.quantity > cart_item.product.stock_quantity:
-                messages.error(
+                messages.warning(
                     request,
                     f'Not enough stock for {cart_item.product.name}. '
                     f'Available: {cart_item.product.stock_quantity} {cart_item.product.get_unit_display()}.'
@@ -357,6 +362,7 @@ def checkout(request):
                 unit_price=cart_item.product.discounted_price,
                 subtotal=cart_item.subtotal,
             )
+
             # Decrement stock (TC-011)
             cart_item.product.stock_quantity = max(
                 Decimal('0'),
@@ -391,7 +397,7 @@ def order_confirmation(request, pk):
     items = order.items.select_related(
         'product',
         'producer',
-        'producer__user'
+        'producer__user',
     ).order_by('producer__business_name', 'product__name')
 
     organisation_name = ''
@@ -407,6 +413,7 @@ def order_confirmation(request, pk):
         'is_bulk_order': is_bulk_order,
     })
 
+
 # ─────────────────────────────────────────────────────────────
 # CUSTOMER VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -416,6 +423,7 @@ def customer_orders(request):
     orders = Order.objects.filter(
         customer=request.user
     ).prefetch_related('items__product', 'items__producer').order_by('-created_at')
+
     return render(request, 'customer/orders.html', {'orders': orders})
 
 
@@ -432,7 +440,6 @@ def producer_dashboard(request):
         producer_status='pending'
     ).select_related('order', 'order__customer', 'product').order_by('order__delivery_date')
 
-    # Flag low-stock products (stock at or below threshold)
     low_stock_products = [p for p in products if p.stock_quantity <= p.low_stock_threshold]
 
     return render(request, 'producer/dashboard.html', {
@@ -456,6 +463,7 @@ def producer_products(request):
 @producer_required
 def product_create(request):
     profile = get_object_or_404(ProducerProfile, user=request.user)
+
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
@@ -467,6 +475,7 @@ def product_create(request):
             return redirect('producer_products')
     else:
         form = ProductForm()
+
     return render(request, 'producer/product_form.html', {'form': form, 'action': 'Add'})
 
 
@@ -474,6 +483,7 @@ def product_create(request):
 def product_edit(request, pk):
     profile = get_object_or_404(ProducerProfile, user=request.user)
     product = get_object_or_404(Product, pk=pk, producer=profile)
+
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
@@ -483,6 +493,7 @@ def product_edit(request, pk):
             return redirect('producer_products')
     else:
         form = ProductForm(instance=product)
+
     return render(request, 'producer/product_form.html', {
         'form': form,
         'action': 'Edit',
@@ -496,6 +507,7 @@ def producer_orders(request):
     order_items = OrderItem.objects.filter(
         producer=profile
     ).select_related('order', 'order__customer', 'product').order_by('order__delivery_date')
+
     return render(request, 'producer/orders.html', {
         'order_items': order_items,
         'profile': profile,
@@ -525,6 +537,7 @@ def producer_update_order_status(request, item_pk):
             item.producer_status = new_status
             item.producer_notes = notes
             item.save()
+
             OrderStatusHistory.objects.create(
                 order=item.order,
                 order_item=item,
@@ -539,7 +552,10 @@ def producer_update_order_status(request, item_pk):
 
     return redirect('producer_orders')
 
-# admin view
+
+# ─────────────────────────────────────────────────────────────
+# ADMIN VIEWS
+# ─────────────────────────────────────────────────────────────
 
 def admin_required(view_func):
     @login_required
@@ -553,21 +569,17 @@ def admin_required(view_func):
 @admin_required
 def admin_dashboard(request):
     from django.db.models import Sum
+
     users = User.objects.all()
     orders = Order.objects.all().order_by('-created_at')
     products = Product.objects.all()
     producers = ProducerProfile.objects.all()
 
-    # Financial stats
     total_revenue = orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
     total_commission = orders.aggregate(Sum('commission_amount'))['commission_amount__sum'] or 0
     total_producer_payments = total_revenue - total_commission
 
-    # Low stock products
     low_stock = [p for p in products if p.stock_quantity <= p.low_stock_threshold]
-
-    # Surplus products
-    from datetime import datetime
     surplus_products = products.filter(is_surplus=True)
 
     return render(request, 'admin/dashboard.html', {
@@ -585,8 +597,6 @@ def admin_dashboard(request):
         'low_stock_products': low_stock,
         'surplus_products': surplus_products,
     })
-    
-
 
 
 @admin_required
@@ -613,11 +623,13 @@ def admin_add_category(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         slug = request.POST.get('slug', '').strip()
+
         if name and slug:
             Category.objects.get_or_create(name=name, slug=slug)
             messages.success(request, f'Category "{name}" added.')
         else:
             messages.error(request, 'Name and slug are required.')
+
     return redirect('admin_dashboard')
 
 
