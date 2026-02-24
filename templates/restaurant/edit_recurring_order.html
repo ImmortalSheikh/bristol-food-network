@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}Edit Recurring Order — Bristol Food Network{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-10">
+
+<div class="mb-4">
+    <h2 class="mb-1">Edit: {{ ro.name }}</h2>
+    <p class="text-muted">Changes apply to all future generated orders — not to orders already placed.</p>
+</div>
+
+<form method="post" id="recurring-form">
+{% csrf_token %}
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card p-4 mb-4">
+            <h5 class="mb-3">Schedule & Delivery</h5>
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Weekly Products</h5>
+                <button type="button" class="btn btn-sm btn-outline-success" id="add-row">+ Add Product</button>
+            </div>
+
+            <div id="item-rows"></div>
+            <p class="text-muted small mt-2" id="empty-hint" style="display:none">Click "+ Add Product" to add ingredients.</p>
+
+            <div class="mt-3 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small">Estimated weekly total:</span>
+                    <span class="fw-bold text-success ms-1" id="weekly-total">£0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="product-data" type="application/json">
+[
+{% for p in products %}
+  {"id": {{ p.pk }}, "name": "{{ p.name|escapejs }}", "producer": "{{ p.producer.business_name|escapejs }}", "unit": "{{ p.get_unit_display|escapejs }}", "price": {{ p.discounted_price }}}{% if not forloop.last %},{% endif %}
+{% endfor %}
+]
+</script>
+
+<script id="existing-data" type="application/json">{{ existing_items|safe }}</script>
+
+<div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-success px-4">Save Changes</button>
+    <a href="{% url 'recurring_orders_list' %}" class="btn btn-outline-secondary">Cancel</a>
+</div>
+
+</form>
+</div>
+</div>
+
+<script>
+const PRODUCTS = JSON.parse(document.getElementById('product-data').textContent);
+const EXISTING = JSON.parse(document.getElementById('existing-data').textContent);
+let rowCount   = 0;
+
+function buildSelect(selectedId) {
+    let html = '<select name="product_id[]" class="form-select form-select-sm" onchange="rowChanged(this)" required>';
+    html += '<option value="">— choose product —</option>';
+    PRODUCTS.forEach(p => {
+        const sel = (String(p.id) === String(selectedId)) ? ' selected' : '';
+        html += `<option value="${p.id}" data-price="${p.price}" data-unit="${p.unit}"${sel}>${p.name} (${p.producer})</option>`;
+    });
+    html += '</select>';
+    return html;
+}
+
+function addRow(productId, qty) {
+    rowCount++;
+    document.getElementById('empty-hint').style.display = 'none';
+    const row = document.createElement('div');
+    row.className = 'row g-2 align-items-center mb-2 item-row';
+    row.innerHTML = `
+        <div class="col-6">${buildSelect(productId || '')}</div>
+        <div class="col-3">
+            <input type="number" name="quantity[]" class="form-control form-control-sm"
+                   placeholder="Qty" min="0.01" step="0.1" value="${qty || ''}"
+                   oninput="updateTotal()" required>
+        </div>
+        <div class="col-2">
+            <input type="text" name="item_notes[]" class="form-control form-control-sm" placeholder="Note">
+        </div>
+        <div class="col-1">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)">×</button>
+        </div>
+        <div class="col-12"><small class="text-muted row-unit-hint"></small></div>`;
+    document.getElementById('item-rows').appendChild(row);
+    if (productId) updateRowHint(row.querySelector('select'));
+    updateTotal();
+}
+
+function removeRow(btn) {
+    btn.closest('.item-row').remove();
+    updateTotal();
+}
+
+function rowChanged(sel) { updateRowHint(sel); updateTotal(); }
+
+function updateRowHint(sel) {
+    const opt  = sel.options[sel.selectedIndex];
+    const hint = sel.closest('.item-row').querySelector('.row-unit-hint');
+    hint.textContent = opt && opt.dataset.unit
+        ? `Unit: ${opt.dataset.unit}  ·  £${parseFloat(opt.dataset.price).toFixed(2)} each`
+        : '';
+}
+
+function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('.item-row').forEach(row => {
+        const sel = row.querySelector('select');
+        const qty = parseFloat(row.querySelector('input[name="quantity[]"]').value) || 0;
+        const opt = sel.options[sel.selectedIndex];
+        if (opt && opt.dataset.price) total += parseFloat(opt.dataset.price) * qty;
+    });
+    document.getElementById('weekly-total').textContent = '£' + total.toFixed(2);
+}
+
+// Load existing items
+Object.entries(EXISTING).forEach(([pid, qty]) => addRow(pid, qty));
+if (!Object.keys(EXISTING).length) document.getElementById('empty-hint').style.display = '';
+
+document.getElementById('add-row').addEventListener('click', () => addRow());
+</script>
+{% endblock %}
