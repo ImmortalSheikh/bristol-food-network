@@ -219,3 +219,23 @@ class CartItemForm(forms.Form):
             'style': 'width:100px',
         })
     )
+
+class RecurringOrderForm(forms.ModelForm):
+    """TC-018: Create / edit a recurring order template"""
+    class Meta:
+        from .models import RecurringOrder
+        model  = RecurringOrder
+        fields = ['name', 'order_day', 'delivery_day',
+                  'delivery_address', 'delivery_postcode', 'special_instructions']
+        widgets = {
+            'delivery_address':      forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'special_instructions':  forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs['class'] = 'form-select'
+            elif not isinstance(field.widget, forms.Textarea):
+                field.widget.attrs['class'] = 'form-control'

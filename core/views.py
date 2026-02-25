@@ -10,11 +10,12 @@ from datetime import date, timedelta, datetime
 from .models import PaymentSettlement
 from .models import (
     User, Product, Category, Cart, CartItem,
-    Order, OrderItem, ProducerProfile, CustomerProfile, OrderStatusHistory
+    Order, OrderItem, ProducerProfile, CustomerProfile, OrderStatusHistory,
+    RecurringOrder, RecurringOrderItem
 )
 from .forms import (
     ProducerRegistrationForm, CustomerRegistrationForm,
-    LoginForm, ProductForm, CartItemForm
+    LoginForm, ProductForm, CartItemForm, RecurringOrderForm
 )
 
 # ─────────────────────────────────────────────────────────────
@@ -639,3 +640,203 @@ def admin_delete_category(request, pk):
     category.delete()
     messages.success(request, f'Category "{category.name}" deleted.')
     return redirect('admin_dashboard')
+
+# restaurant views/recurring orders/ Abdelrahman
+
+def restaurant_required(view_func):
+    """Restrict a view to logged-in restaurant accounts only."""
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if request.user.role != 'restaurant':
+            messages.error(request, 'This page is for restaurant accounts only.')
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@restaurant_required
+def recurring_orders_list(request):
+    recurring = RecurringOrder.objects.filter(
+        customer=request.user
+    ).prefetch_related('template_items__product__producer')
+    return render(request, 'restaurant/recurring_orders.html', {
+        'recurring_orders': recurring,
+    })
+
+
+@restaurant_required
+def recurring_order_create(request):
+    if request.method == 'POST':
+        form = RecurringOrderForm(request.POST)
+        if form.is_valid():
+            ro = form.save(commit=False)
+            ro.customer = request.user
+            ro.save()
+            _save_recurring_items(request, ro)
+            ro.next_order_date = ro.compute_next_order_date()
+            ro.save(update_fields=['next_order_date'])
+            messages.success(request, f'Recurring order "{ro.name}" created successfully.')
+            return redirect('recurring_orders_list')
+    else:
+        initial = {}
+        try:
+            profile = request.user.customer_profile
+            initial = {
+                'delivery_address':  profile.delivery_address,
+                'delivery_postcode': profile.delivery_postcode,
+            }
+        except Exception:
+            pass
+        form = RecurringOrderForm(initial=initial)
+
+    products = Product.objects.filter(
+        availability__in=['available', 'in_season'],
+        stock_quantity__gt=0
+    ).select_related('producer', 'category').order_by('category__name', 'name')
+
+    return render(request, 'restaurant/create_recurring_order.html', {
+        'form': form,
+        'products': products,
+    })
+
+
+@restaurant_required
+def recurring_order_edit(request, pk):
+    ro = get_object_or_404(RecurringOrder, pk=pk, customer=request.user)
+
+    if request.method == 'POST':
+        form = RecurringOrderForm(request.POST, instance=ro)
+        if form.is_valid():
+            ro = form.save()
+            ro.template_items.all().delete()
+            _save_recurring_items(request, ro)
+            ro.next_order_date = ro.compute_next_order_date()
+            ro.save(update_fields=['next_order_date'])
+            messages.success(request, f'"{ro.name}" updated.')
+            return redirect('recurring_orders_list')
+    else:
+        form = RecurringOrderForm(instance=ro)
+
+    products = Product.objects.filter(
+        availability__in=['available', 'in_season'],
+        stock_quantity__gt=0
+    ).select_related('producer', 'category').order_by('category__name', 'name')
+
+    existing = {str(item.product_id): str(item.quantity)
+                for item in ro.template_items.all()}
+
+    return render(request, 'restaurant/edit_recurring_order.html', {
+        'form': form,
+        'ro': ro,
+        'products': products,
+        'existing_items': existing,
+    })
+
+
+@restaurant_required
+def recurring_order_pause(request, pk):
+    ro = get_object_or_404(RecurringOrder, pk=pk, customer=request.user)
+    ro.is_paused = True
+    ro.save(update_fields=['is_paused'])
+    messages.info(request, f'"{ro.name}" paused.')
+    return redirect('recurring_orders_list')
+
+
+@restaurant_required
+def recurring_order_resume(request, pk):
+    ro = get_object_or_404(RecurringOrder, pk=pk, customer=request.user)
+    ro.is_paused = False
+    ro.next_order_date = ro.compute_next_order_date()
+    ro.save(update_fields=['is_paused', 'next_order_date'])
+    messages.success(request, f'"{ro.name}" resumed.')
+    return redirect('recurring_orders_list')
+
+
+@restaurant_required
+def recurring_order_cancel(request, pk):
+    ro = get_object_or_404(RecurringOrder, pk=pk, customer=request.user)
+    name = ro.name
+    ro.delete()
+    messages.success(request, f'Recurring order "{name}" cancelled.')
+    return redirect('recurring_orders_list')
+
+
+@restaurant_required
+def recurring_order_generate(request, pk):
+    ro = get_object_or_404(RecurringOrder, pk=pk, customer=request.user)
+
+    if ro.is_paused:
+        messages.warning(request, 'This recurring order is paused.')
+        return redirect('recurring_orders_list')
+
+    items = ro.template_items.select_related('product__producer').all()
+    if not items.exists():
+        messages.error(request, 'No products in this template — please add items first.')
+        return redirect('recurring_order_edit', pk=pk)
+
+    day_map = {
+        'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+        'friday': 4, 'saturday': 5, 'sunday': 6,
+    }
+    target      = day_map[ro.delivery_day]
+    today       = date.today()
+    days_ahead  = (target - today.weekday()) % 7 or 7
+    delivery_dt = today + timedelta(days=days_ahead)
+
+    order = Order.objects.create(
+        customer=request.user,
+        status='pending',
+        delivery_address=ro.delivery_address,
+        delivery_postcode=ro.delivery_postcode,
+        delivery_date=delivery_dt,
+        special_instructions=ro.special_instructions,
+        total_amount=Decimal('0'),
+    )
+
+    total = Decimal('0')
+    for t_item in items:
+        price = t_item.product.discounted_price
+        sub   = round(price * t_item.quantity, 2)
+        total += sub
+        OrderItem.objects.create(
+            order=order,
+            product=t_item.product,
+            producer=t_item.product.producer,
+            quantity=t_item.quantity,
+            unit_price=price,
+            subtotal=sub,
+        )
+
+    order.total_amount = total
+    order.commission_amount = order.calculate_commission()
+    order.save(update_fields=['total_amount', 'commission_amount'])
+
+    ro.next_order_date = ro.compute_next_order_date()
+    ro.save(update_fields=['next_order_date'])
+
+    messages.success(
+        request,
+        f'Order #{order.pk} generated for delivery on {delivery_dt.strftime("%d %b %Y")}.'
+    )
+    return redirect('order_confirmation', pk=order.pk)
+
+
+def _save_recurring_items(request, ro):
+    product_ids = request.POST.getlist('product_id[]')
+    quantities  = request.POST.getlist('quantity[]')
+    notes_list  = request.POST.getlist('item_notes[]')
+
+    for i, pid in enumerate(product_ids):
+        try:
+            product = Product.objects.get(pk=int(pid))
+            qty     = Decimal(quantities[i]) if i < len(quantities) else Decimal('1')
+            note    = notes_list[i] if i < len(notes_list) else ''
+            if qty > 0:
+                RecurringOrderItem.objects.update_or_create(
+                    recurring_order=ro,
+                    product=product,
+                    defaults={'quantity': qty, 'notes': note},
+                )
+        except Exception:
+            continue
+

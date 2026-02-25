@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Recurring Orders — Bristol Food Network{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">Recurring Orders</h2>
+        <p class="text-muted mb-0">Weekly ingredient templates for {{ request.user.customer_profile.organisation_name|default:request.user.username }}</p>
+    </div>
+    <a href="{% url 'recurring_order_create' %}" class="btn btn-success">+ New Recurring Order</a>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+{% endif %}
+
+{% if not recurring_orders %}
+<div class="text-center py-5">
+    <div class="fs-1 mb-3">🔄</div>
+    <h4>No recurring orders yet</h4>
+    <p class="text-muted">Set up a weekly template to simplify your ingredient sourcing.</p>
+    <a href="{% url 'recurring_order_create' %}" class="btn btn-success mt-2">Set Up First Recurring Order</a>
+</div>
+
+{% else %}
+{% for ro in recurring_orders %}
+<div class="card mb-3 {% if ro.stock_warnings %}border-warning{% endif %}">
+
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <span class="fs-5">🔄</span>
+            <div>
+                <strong>{{ ro.name }}</strong>
+                <div class="text-muted small">
+                    Order every <strong>{{ ro.get_order_day_display }}</strong>
+                    · Delivered every <strong>{{ ro.get_delivery_day_display }}</strong>
+                </div>
+            </div>
+            {% if ro.is_paused %}
+                <span class="badge bg-warning text-dark">⏸ Paused</span>
+            {% elif ro.stock_warnings %}
+                <span class="badge bg-warning text-dark">⚠ Stock Issues</span>
+            {% else %}
+                <span class="badge bg-success">● Active</span>
+            {% endif %}
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+            {% if not ro.is_paused %}
+            <form method="post" action="{% url 'recurring_order_generate' ro.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit"
+                    class="btn btn-sm {% if ro.stock_warnings %}btn-warning{% else %}btn-outline-primary{% endif %}"
+                    onclick="return confirm('{% if ro.stock_warnings %}⚠ Some products have stock issues and will be skipped. Generate anyway?{% else %}Generate this week\'s order now?{% endif %}')">
+                    ▶ Generate Now
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'recurring_order_edit' ro.pk %}" class="btn btn-sm btn-outline-secondary">Edit Template</a>
+            {% if ro.is_paused %}
+            <form method="post" action="{% url 'recurring_order_resume' ro.pk %}" class="d-inline">
+                {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-success">▶ Resume</button>
+            </form>
+            {% else %}
+            <form method="post" action="{% url 'recurring_order_pause' ro.pk %}" class="d-inline">
+                {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-warning">⏸ Pause</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{% url 'recurring_order_cancel' ro.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                    onclick="return confirm('Cancel \'{{ ro.name }}\'? This cannot be undone.')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    {# ── Stock / availability alert banner ── #}
+    {% if ro.stock_warnings %}
+    <div class="alert alert-warning mb-0 rounded-0 border-start-0 border-end-0 border-top-0 py-2 px-3">
+        <strong>⚠ Stock alerts — review before generating:</strong>
+        <ul class="mb-1 mt-1 small">
+            {% for w in ro.stock_warnings %}<li>{{ w }}</li>{% endfor %}
+        </ul>
+        <small>
+            <a href="{% url 'recurring_order_edit' ro.pk %}">Edit template</a> to replace unavailable items,
+            or hit Generate Now to skip them and order the rest.
+        </small>
+    </div>
+    {% endif %}
+
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                {% if ro.template_items.exists %}
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th>Supplier</th>
+                            <th>Qty / week</th>
+                            <th class="text-end">Unit price</th>
+                            <th class="text-end">Stock status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in ro.template_items.all %}
+                        <tr class="{% if item.product.availability in 'out_of_season,unavailable' %}table-danger{% elif item.product.stock_quantity <= 0 %}table-danger{% elif item.product.stock_quantity < item.quantity %}table-warning{% endif %}">
+                            <td>{{ item.product.name }}</td>
+                            <td class="text-muted small">{{ item.product.producer.business_name }}</td>
+                            <td>{{ item.quantity }} {{ item.product.get_unit_display }}</td>
+                            <td class="text-end">£{{ item.product.discounted_price|floatformat:2 }}</td>
+                            <td class="text-end">
+                                {% if item.product.availability in 'out_of_season,unavailable' %}
+                                    <span class="badge bg-danger">{{ item.product.get_availability_display }}</span>
+                                {% elif item.product.stock_quantity <= 0 %}
+                                    <span class="badge bg-danger">Out of stock</span>
+                                {% elif item.product.stock_quantity < item.quantity %}
+                                    <span class="badge bg-warning text-dark">Low ({{ item.product.stock_quantity }} left)</span>
+                                {% else %}
+                                    <span class="badge bg-success">✓ In stock</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted small mb-0">No products added yet.
+                    <a href="{% url 'recurring_order_edit' ro.pk %}">Edit template</a> to add items.</p>
+                {% endif %}
+            </div>
+
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <div class="fw-bold text-success fs-5">£{{ ro.estimated_weekly_total }}</div>
+                <div class="text-muted small">estimated / week</div>
+                {% if ro.next_order_date and not ro.is_paused %}
+                <div class="text-muted small mt-2">
+                    <i class="bi bi-calendar"></i>
+                    Next order: <strong>{{ ro.next_order_date|date:"D, d M Y" }}</strong>
+                </div>
+                {% endif %}
+                <div class="text-muted small">
+                    <i class="bi bi-geo-alt"></i> {{ ro.delivery_postcode }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<div class="alert alert-info mt-4">
+    <strong>💡 How stock validation works:</strong>
+    Each time you generate an order, every item is checked.
+    <span class="text-danger fw-bold">Red rows</span> = unavailable / out of stock (skipped entirely).
+    <span class="fw-bold" style="color:#856404">Yellow rows</span> = insufficient stock (quantity capped to what's available).
+    Green rows = ready to order. Producers receive advance notice for preparation.
+</div>
+{% endif %}
+{% endblock %}

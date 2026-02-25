@@ -309,3 +309,71 @@ class OrderStatusHistory(models.Model):
 
     def __str__(self):
         return f"Order #{self.order.pk}: {self.old_status} → {self.new_status}"
+class RecurringOrder(models.Model):
+    """Recurring weekly order template for restaurant accounts"""
+    DAY_CHOICES = [
+        ('monday',    'Monday'),
+        ('tuesday',   'Tuesday'),
+        ('wednesday', 'Wednesday'),
+        ('thursday',  'Thursday'),
+        ('friday',    'Friday'),
+        ('saturday',  'Saturday'),
+        ('sunday',    'Sunday'),
+    ]
+
+    customer       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_orders')
+    name           = models.CharField(max_length=200, help_text='e.g. "Weekly Kitchen Basics"')
+    order_day      = models.CharField(max_length=10, choices=DAY_CHOICES, default='monday',
+                                      help_text='Day the order is placed each week')
+    delivery_day   = models.CharField(max_length=10, choices=DAY_CHOICES, default='wednesday',
+                                      help_text='Day delivery is expected each week')
+    delivery_address  = models.TextField()
+    delivery_postcode = models.CharField(max_length=10)
+    special_instructions = models.TextField(blank=True)
+    is_paused      = models.BooleanField(default=False)
+    next_order_date = models.DateField(null=True, blank=True,
+                                       help_text='Date the next Order will be generated')
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.customer.username})"
+
+    @property
+    def estimated_weekly_total(self):
+        return round(sum(
+            item.product.discounted_price * item.quantity
+            for item in self.template_items.select_related('product').all()
+        ), 2)
+
+    def compute_next_order_date(self):
+        from datetime import date, timedelta
+        day_map = {
+            'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+            'friday': 4, 'saturday': 5, 'sunday': 6,
+        }
+        target = day_map[self.order_day]
+        today  = date.today()
+        days_ahead = (target - today.weekday()) % 7
+        if days_ahead == 0:
+            days_ahead = 7
+        return today + timedelta(days=days_ahead)
+
+    class Meta:
+        ordering = ['name']
+
+
+class RecurringOrderItem(models.Model):
+    """One product line inside a RecurringOrder template"""
+    recurring_order = models.ForeignKey(RecurringOrder, on_delete=models.CASCADE,
+                                        related_name='template_items')
+    product  = models.ForeignKey('Product', on_delete=models.CASCADE)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2,
+                                   validators=[MinValueValidator(Decimal('0.01'))])
+    notes    = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        unique_together = ('recurring_order', 'product')
+
+    def __str__(self):
+        return f"{self.product.name} x{self.quantity} — {self.recurring_order.name}"

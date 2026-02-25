@@ -30,6 +30,16 @@ urlpatterns = [
     # Customer
     path('my-orders/', views.customer_orders, name='customer_orders'),
 
+    # Restaurant — recurring orders
+    path('restaurant/recurring-orders/', views.recurring_orders_list, name='recurring_orders_list'),
+    path('restaurant/recurring-orders/create/', views.recurring_order_create, name='recurring_order_create'),
+    path('restaurant/recurring-orders/<int:pk>/edit/', views.recurring_order_edit, name='recurring_order_edit'),
+    path('restaurant/recurring-orders/<int:pk>/pause/', views.recurring_order_pause, name='recurring_order_pause'),
+    path('restaurant/recurring-orders/<int:pk>/resume/', views.recurring_order_resume, name='recurring_order_resume'),
+    path('restaurant/recurring-orders/<int:pk>/cancel/', views.recurring_order_cancel, name='recurring_order_cancel'),
+    path('restaurant/recurring-orders/<int:pk>/generate/', views.recurring_order_generate, name='recurring_order_generate'),
+
+
     # Producer
     path('producer/dashboard/', views.producer_dashboard, name='producer_dashboard'),
     path('producer/products/', views.producer_products, name='producer_products'),
