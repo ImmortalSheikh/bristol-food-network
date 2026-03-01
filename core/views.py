@@ -43,6 +43,26 @@ def customer_required(view_func):
     return wrapper
 
 
+def admin_required(view_func):
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if request.user.role != 'admin':
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def restaurant_required(view_func):
+    """Restrict a view to logged-in restaurant accounts only."""
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if request.user.role != 'restaurant':
+            messages.error(request, 'This page is for restaurant accounts only.')
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
 # ─────────────────────────────────────────────────────────────
 # AUTH VIEWS
 # ─────────────────────────────────────────────────────────────
@@ -195,7 +215,6 @@ def cart_view(request):
     cart = _get_or_create_cart(request.user)
     items = cart.cart_items.select_related('product', 'product__producer').all()
 
-    # Group items by producer for multi-vendor display (TC-008)
     by_producer = {}
     for item in items:
         p = item.product.producer
@@ -226,7 +245,6 @@ def add_to_cart(request, product_pk):
 
     qty = form.cleaned_data['quantity']
 
-    # ✅ TC-017: validate against stock/capacity
     if qty > product.stock_quantity:
         messages.warning(
             request,
@@ -245,8 +263,7 @@ def add_to_cart(request, product_pk):
         if new_qty > product.stock_quantity:
             messages.warning(
                 request,
-                f'Not enough stock — only {product.stock_quantity} {product.get_unit_display()} available. '
-                f'Please reduce the quantity.'
+                f'Not enough stock — only {product.stock_quantity} {product.get_unit_display()} available.'
             )
             return redirect('cart')
         item.quantity = new_qty
@@ -271,7 +288,6 @@ def update_cart_item(request, item_pk):
         messages.info(request, 'Item removed from cart.')
         return redirect('cart')
 
-    # ✅ TC-017: validate against stock/capacity inside cart too
     if qty > item.product.stock_quantity:
         messages.warning(
             request,
@@ -312,7 +328,7 @@ def checkout(request):
         messages.error(request, 'Please complete your profile before checking out.')
         return redirect('cart')
 
-    min_delivery = date.today() + timedelta(days=2)  # 48-hour minimum lead time (TC-007)
+    min_delivery = date.today() + timedelta(days=2)
 
     if request.method == 'POST':
         delivery_address = request.POST.get('delivery_address', '').strip()
@@ -330,7 +346,6 @@ def checkout(request):
             messages.error(request, 'Delivery date must be at least 48 hours from now.')
             return redirect('checkout')
 
-        # ✅ Final stock check before creating the order (TC-017 robustness)
         items = cart.cart_items.select_related('product', 'product__producer').all()
         for cart_item in items:
             if cart_item.quantity > cart_item.product.stock_quantity:
@@ -363,8 +378,6 @@ def checkout(request):
                 unit_price=cart_item.product.discounted_price,
                 subtotal=cart_item.subtotal,
             )
-
-            # Decrement stock (TC-011)
             cart_item.product.stock_quantity = max(
                 Decimal('0'),
                 cart_item.product.stock_quantity - cart_item.quantity
@@ -396,9 +409,7 @@ def order_confirmation(request, pk):
     order = get_object_or_404(Order, pk=pk, customer=request.user)
 
     items = order.items.select_related(
-        'product',
-        'producer',
-        'producer__user',
+        'product', 'producer', 'producer__user',
     ).order_by('producer__business_name', 'product__name')
 
     organisation_name = ''
@@ -555,17 +566,191 @@ def producer_update_order_status(request, item_pk):
 
 
 # ─────────────────────────────────────────────────────────────
-# ADMIN VIEWS
+# TC-012: PRODUCER PAYMENT SETTLEMENTS
 # ─────────────────────────────────────────────────────────────
 
-def admin_required(view_func):
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        if request.user.role != 'admin':
-            raise PermissionDenied
-        return view_func(request, *args, **kwargs)
-    return wrapper
+@producer_required
+def producer_payments(request):
+    profile = get_object_or_404(ProducerProfile, user=request.user)
 
+    delivered_items = OrderItem.objects.filter(
+        producer=profile,
+        producer_status='delivered'
+    ).select_related('order', 'product').order_by('-order__created_at')
+
+    from collections import defaultdict
+    import datetime as dt
+
+    weekly = defaultdict(lambda: {
+        'items': [], 'gross': Decimal('0'),
+        'commission': Decimal('0'), 'net': Decimal('0'),
+        'week_start': None, 'week_end': None,
+    })
+
+    for item in delivered_items:
+        order_date = item.order.created_at.date()
+        week_start = order_date - dt.timedelta(days=order_date.weekday())
+        week_end = week_start + dt.timedelta(days=6)
+        commission = round(item.subtotal * Decimal('0.05'), 2)
+        net = item.subtotal - commission
+        weekly[week_start]['items'].append(item)
+        weekly[week_start]['gross'] += item.subtotal
+        weekly[week_start]['commission'] += commission
+        weekly[week_start]['net'] += net
+        weekly[week_start]['week_start'] = week_start
+        weekly[week_start]['week_end'] = week_end
+
+    weekly_summaries = sorted(weekly.values(), key=lambda x: x['week_start'], reverse=True)
+    total_gross = sum(w['gross'] for w in weekly_summaries)
+    total_commission = sum(w['commission'] for w in weekly_summaries)
+    total_net = sum(w['net'] for w in weekly_summaries)
+
+    return render(request, 'producer/payments.html', {
+        'profile': profile,
+        'weekly_summaries': weekly_summaries,
+        'total_gross': total_gross,
+        'total_commission': total_commission,
+        'total_net': total_net,
+    })
+
+
+@producer_required
+def producer_payments_csv(request):
+    import csv, datetime as dt
+    from django.http import HttpResponse
+
+    profile = get_object_or_404(ProducerProfile, user=request.user)
+    delivered_items = OrderItem.objects.filter(
+        producer=profile,
+        producer_status='delivered'
+    ).select_related('order', 'product').order_by('-order__created_at')
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = (
+        f'attachment; filename="payment_report_{profile.business_name}_{dt.date.today()}.csv"'
+    )
+    writer = csv.writer(response)
+    writer.writerow([
+        'Order #', 'Order Date', 'Delivery Date', 'Product',
+        'Quantity', 'Unit Price', 'Gross Amount', 'Commission (5%)', 'Net Payment (95%)'
+    ])
+    for item in delivered_items:
+        commission = round(item.subtotal * Decimal('0.05'), 2)
+        writer.writerow([
+            item.order.pk,
+            item.order.created_at.strftime('%d/%m/%Y'),
+            item.order.delivery_date.strftime('%d/%m/%Y'),
+            item.product.name,
+            item.quantity,
+            item.unit_price,
+            item.subtotal,
+            commission,
+            item.subtotal - commission,
+        ])
+    return response
+
+
+# ─────────────────────────────────────────────────────────────
+# TC-025: ADMIN COMMISSION REPORTS
+# ─────────────────────────────────────────────────────────────
+
+@admin_required
+def admin_commission_report(request):
+    import datetime as dt
+
+    date_from_str = request.GET.get('date_from', '')
+    date_to_str = request.GET.get('date_to', '')
+
+    orders = Order.objects.filter(
+        status__in=['delivered', 'confirmed', 'ready']
+    ).prefetch_related('items__producer', 'items__product').order_by('-created_at')
+
+    try:
+        if date_from_str:
+            orders = orders.filter(
+                created_at__date__gte=dt.datetime.strptime(date_from_str, '%Y-%m-%d').date()
+            )
+        if date_to_str:
+            orders = orders.filter(
+                created_at__date__lte=dt.datetime.strptime(date_to_str, '%Y-%m-%d').date()
+            )
+    except ValueError:
+        pass
+
+    report_orders = []
+    total_gross = Decimal('0')
+    total_commission = Decimal('0')
+    total_net = Decimal('0')
+
+    for order in orders:
+        commission = round(order.total_amount * Decimal('0.05'), 2)
+        net = order.total_amount - commission
+        producer_breakdown = []
+        for item in order.items.all():
+            item_commission = round(item.subtotal * Decimal('0.05'), 2)
+            producer_breakdown.append({
+                'producer': item.producer.business_name,
+                'subtotal': item.subtotal,
+                'commission': item_commission,
+                'net': item.subtotal - item_commission,
+            })
+        report_orders.append({
+            'order': order,
+            'commission': commission,
+            'net': net,
+            'producer_breakdown': producer_breakdown,
+        })
+        total_gross += order.total_amount
+        total_commission += commission
+        total_net += net
+
+    return render(request, 'admin/commission_report.html', {
+        'report_orders': report_orders,
+        'total_gross': total_gross,
+        'total_commission': total_commission,
+        'total_net': total_net,
+        'date_from': date_from_str,
+        'date_to': date_to_str,
+    })
+
+
+@admin_required
+def admin_commission_csv(request):
+    import csv, datetime as dt
+    from django.http import HttpResponse
+
+    orders = Order.objects.filter(
+        status__in=['delivered', 'confirmed', 'ready']
+    ).prefetch_related('items__producer', 'items__product').order_by('-created_at')
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="commission_report_{dt.date.today()}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Order #', 'Date', 'Customer', 'Producer', 'Product',
+        'Item Total', 'Commission (5%)', 'Producer Payment (95%)', 'Order Status'
+    ])
+    for order in orders:
+        for item in order.items.all():
+            commission = round(item.subtotal * Decimal('0.05'), 2)
+            writer.writerow([
+                order.pk,
+                order.created_at.strftime('%d/%m/%Y'),
+                order.customer.get_full_name() or order.customer.username,
+                item.producer.business_name,
+                item.product.name,
+                item.subtotal,
+                commission,
+                item.subtotal - commission,
+                order.get_status_display(),
+            ])
+    return response
+
+
+# ─────────────────────────────────────────────────────────────
+# ADMIN VIEWS
+# ─────────────────────────────────────────────────────────────
 
 @admin_required
 def admin_dashboard(request):
@@ -624,13 +809,11 @@ def admin_add_category(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         slug = request.POST.get('slug', '').strip()
-
         if name and slug:
             Category.objects.get_or_create(name=name, slug=slug)
             messages.success(request, f'Category "{name}" added.')
         else:
             messages.error(request, 'Name and slug are required.')
-
     return redirect('admin_dashboard')
 
 
@@ -641,18 +824,10 @@ def admin_delete_category(request, pk):
     messages.success(request, f'Category "{category.name}" deleted.')
     return redirect('admin_dashboard')
 
-# restaurant views/recurring orders/ Abdelrahman
 
-def restaurant_required(view_func):
-    """Restrict a view to logged-in restaurant accounts only."""
-    @login_required
-    def wrapper(request, *args, **kwargs):
-        if request.user.role != 'restaurant':
-            messages.error(request, 'This page is for restaurant accounts only.')
-            return redirect('home')
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
+# ─────────────────────────────────────────────────────────────
+# RESTAURANT — RECURRING ORDERS (TC-018)
+# ─────────────────────────────────────────────────────────────
 
 @restaurant_required
 def recurring_orders_list(request):
@@ -682,7 +857,7 @@ def recurring_order_create(request):
         try:
             profile = request.user.customer_profile
             initial = {
-                'delivery_address':  profile.delivery_address,
+                'delivery_address': profile.delivery_address,
                 'delivery_postcode': profile.delivery_postcode,
             }
         except Exception:
@@ -778,9 +953,9 @@ def recurring_order_generate(request, pk):
         'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
         'friday': 4, 'saturday': 5, 'sunday': 6,
     }
-    target      = day_map[ro.delivery_day]
-    today       = date.today()
-    days_ahead  = (target - today.weekday()) % 7 or 7
+    target = day_map[ro.delivery_day]
+    today = date.today()
+    days_ahead = (target - today.weekday()) % 7 or 7
     delivery_dt = today + timedelta(days=days_ahead)
 
     order = Order.objects.create(
@@ -796,7 +971,7 @@ def recurring_order_generate(request, pk):
     total = Decimal('0')
     for t_item in items:
         price = t_item.product.discounted_price
-        sub   = round(price * t_item.quantity, 2)
+        sub = round(price * t_item.quantity, 2)
         total += sub
         OrderItem.objects.create(
             order=order,
@@ -823,14 +998,14 @@ def recurring_order_generate(request, pk):
 
 def _save_recurring_items(request, ro):
     product_ids = request.POST.getlist('product_id[]')
-    quantities  = request.POST.getlist('quantity[]')
-    notes_list  = request.POST.getlist('item_notes[]')
+    quantities = request.POST.getlist('quantity[]')
+    notes_list = request.POST.getlist('item_notes[]')
 
     for i, pid in enumerate(product_ids):
         try:
             product = Product.objects.get(pk=int(pid))
-            qty     = Decimal(quantities[i]) if i < len(quantities) else Decimal('1')
-            note    = notes_list[i] if i < len(notes_list) else ''
+            qty = Decimal(quantities[i]) if i < len(quantities) else Decimal('1')
+            note = notes_list[i] if i < len(notes_list) else ''
             if qty > 0:
                 RecurringOrderItem.objects.update_or_create(
                     recurring_order=ro,
@@ -839,4 +1014,3 @@ def _save_recurring_items(request, ro):
                 )
         except Exception:
             continue
-
