@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
@@ -270,7 +271,8 @@ def add_to_cart(request, product_pk):
         item.save()
 
     messages.success(request, f'Added {product.name} to your cart.')
-    return redirect('cart')
+    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or 'marketplace'
+    return redirect(next_url)
 
 
 @customer_required
@@ -315,6 +317,7 @@ def remove_from_cart(request, item_pk):
 # ─────────────────────────────────────────────────────────────
 
 @customer_required
+@transaction.atomic
 def checkout(request):
     cart = _get_or_create_cart(request.user)
 
@@ -367,7 +370,7 @@ def checkout(request):
             total_amount=total,
         )
         order.calculate_commission()
-        order.save()
+        order.save(update_fields=['commission_amount'])
 
         for cart_item in items:
             OrderItem.objects.create(
@@ -382,9 +385,15 @@ def checkout(request):
                 Decimal('0'),
                 cart_item.product.stock_quantity - cart_item.quantity
             )
-            cart_item.product.save()
+            cart_item.product.save(update_fields=['stock_quantity'])
 
         cart.cart_items.all().delete()
+
+        # Keep parent status consistent with items (still pending at this point, but future-proof)
+        try:
+            order.sync_status_from_items(save=True)
+        except Exception:
+            pass
 
         OrderStatusHistory.objects.create(
             order=order,
@@ -527,6 +536,7 @@ def producer_orders(request):
 
 
 @producer_required
+@transaction.atomic
 def producer_update_order_status(request, item_pk):
     profile = get_object_or_404(ProducerProfile, user=request.user)
     item = get_object_or_404(OrderItem, pk=item_pk, producer=profile)
@@ -545,19 +555,37 @@ def producer_update_order_status(request, item_pk):
         new_idx = STATUS_FLOW.index(new_status)
 
         if new_idx > current_idx:
-            old_status = item.producer_status
+            old_item_status = item.producer_status
+
+            # Update item status
             item.producer_status = new_status
             item.producer_notes = notes
-            item.save()
+            item.save(update_fields=['producer_status', 'producer_notes'])
 
+            # Audit: item status change
             OrderStatusHistory.objects.create(
                 order=item.order,
                 order_item=item,
-                old_status=old_status,
+                old_status=old_item_status,
                 new_status=new_status,
                 changed_by=request.user,
                 notes=notes,
             )
+
+            # Sync parent Order.status so admin/customer sees it
+            changed, old_order_status, new_order_status = item.order.sync_status_from_items(save=True)
+
+            # Audit: parent order status change
+            if changed:
+                OrderStatusHistory.objects.create(
+                    order=item.order,
+                    order_item=None,
+                    old_status=old_order_status,
+                    new_status=new_order_status,
+                    changed_by=request.user,
+                    notes=f'Auto-updated order status based on item updates (producer: {profile.business_name}).'
+                )
+
             messages.success(request, f'Order status updated to "{new_status}".')
         else:
             messages.error(request, 'Status can only move forward in the order lifecycle.')
@@ -937,6 +965,7 @@ def recurring_order_cancel(request, pk):
 
 
 @restaurant_required
+@transaction.atomic
 def recurring_order_generate(request, pk):
     ro = get_object_or_404(RecurringOrder, pk=pk, customer=request.user)
 
@@ -985,6 +1014,12 @@ def recurring_order_generate(request, pk):
     order.total_amount = total
     order.commission_amount = order.calculate_commission()
     order.save(update_fields=['total_amount', 'commission_amount'])
+
+    # Keep parent consistent (still pending now, but future-proof)
+    try:
+        order.sync_status_from_items(save=True)
+    except Exception:
+        pass
 
     ro.next_order_date = ro.compute_next_order_date()
     ro.save(update_fields=['next_order_date'])

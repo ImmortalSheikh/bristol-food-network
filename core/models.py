@@ -206,6 +206,54 @@ class Order(models.Model):
         self.commission_amount = round(self.total_amount * self.COMMISSION_RATE, 2)
         return self.commission_amount
 
+    def sync_status_from_items(self, save=True):
+        """
+        Aggregate Order.status from OrderItem.producer_status.
+        Rules:
+          - If all items are cancelled -> cancelled
+          - Otherwise, ignore cancelled items for progress
+          - delivered only if ALL active items delivered
+          - ready only if ALL active items are at least ready
+          - confirmed only if ALL active items are at least confirmed
+          - else pending
+        """
+        rank = {
+            'pending': 0,
+            'confirmed': 1,
+            'ready': 2,
+            'delivered': 3,
+        }
+
+        qs = self.items.all()
+        if not qs.exists():
+            new_status = 'pending'
+        else:
+            active = qs.exclude(producer_status='cancelled')
+
+            # everything cancelled
+            if active.count() == 0:
+                new_status = 'cancelled'
+            else:
+                min_rank = min(rank.get(i.producer_status, 0) for i in active)
+
+                if min_rank >= rank['delivered']:
+                    new_status = 'delivered'
+                elif min_rank >= rank['ready']:
+                    new_status = 'ready'
+                elif min_rank >= rank['confirmed']:
+                    new_status = 'confirmed'
+                else:
+                    new_status = 'pending'
+
+        changed = (self.status != new_status)
+        old_status = self.status
+        self.status = new_status
+
+        if changed and save:
+            self.save(update_fields=['status', 'updated_at'])
+
+        return changed, old_status, new_status
+
     def __str__(self):
         return f"Order #{self.pk} — {self.customer.username}"
 
@@ -309,6 +357,8 @@ class OrderStatusHistory(models.Model):
 
     def __str__(self):
         return f"Order #{self.order.pk}: {self.old_status} → {self.new_status}"
+
+
 class RecurringOrder(models.Model):
     """Recurring weekly order template for restaurant accounts"""
     DAY_CHOICES = [
@@ -321,20 +371,26 @@ class RecurringOrder(models.Model):
         ('sunday',    'Sunday'),
     ]
 
-    customer       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_orders')
-    name           = models.CharField(max_length=200, help_text='e.g. "Weekly Kitchen Basics"')
-    order_day      = models.CharField(max_length=10, choices=DAY_CHOICES, default='monday',
-                                      help_text='Day the order is placed each week')
-    delivery_day   = models.CharField(max_length=10, choices=DAY_CHOICES, default='wednesday',
-                                      help_text='Day delivery is expected each week')
-    delivery_address  = models.TextField()
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_orders')
+    name = models.CharField(max_length=200, help_text='e.g. "Weekly Kitchen Basics"')
+    order_day = models.CharField(
+        max_length=10, choices=DAY_CHOICES, default='monday',
+        help_text='Day the order is placed each week'
+    )
+    delivery_day = models.CharField(
+        max_length=10, choices=DAY_CHOICES, default='wednesday',
+        help_text='Day delivery is expected each week'
+    )
+    delivery_address = models.TextField()
     delivery_postcode = models.CharField(max_length=10)
     special_instructions = models.TextField(blank=True)
-    is_paused      = models.BooleanField(default=False)
-    next_order_date = models.DateField(null=True, blank=True,
-                                       help_text='Date the next Order will be generated')
-    created_at     = models.DateTimeField(auto_now_add=True)
-    updated_at     = models.DateTimeField(auto_now=True)
+    is_paused = models.BooleanField(default=False)
+    next_order_date = models.DateField(
+        null=True, blank=True,
+        help_text='Date the next Order will be generated'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name} ({self.customer.username})"
@@ -353,7 +409,7 @@ class RecurringOrder(models.Model):
             'friday': 4, 'saturday': 5, 'sunday': 6,
         }
         target = day_map[self.order_day]
-        today  = date.today()
+        today = date.today()
         days_ahead = (target - today.weekday()) % 7
         if days_ahead == 0:
             days_ahead = 7
@@ -365,12 +421,16 @@ class RecurringOrder(models.Model):
 
 class RecurringOrderItem(models.Model):
     """One product line inside a RecurringOrder template"""
-    recurring_order = models.ForeignKey(RecurringOrder, on_delete=models.CASCADE,
-                                        related_name='template_items')
-    product  = models.ForeignKey('Product', on_delete=models.CASCADE)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2,
-                                   validators=[MinValueValidator(Decimal('0.01'))])
-    notes    = models.CharField(max_length=300, blank=True)
+    recurring_order = models.ForeignKey(
+        RecurringOrder, on_delete=models.CASCADE,
+        related_name='template_items'
+    )
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    quantity = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))]
+    )
+    notes = models.CharField(max_length=300, blank=True)
 
     class Meta:
         unique_together = ('recurring_order', 'product')

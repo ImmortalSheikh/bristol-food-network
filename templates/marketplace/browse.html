@@ -85,7 +85,16 @@
                                 {% endif %}
                                 <small class="text-muted">/{{ product.get_unit_display }}</small>
                             </div>
-                            <a href="{% url 'product_detail' product.pk %}" class="btn btn-sm btn-outline-success">View</a>
+                            <div class="d-flex gap-2">
+    <a href="{% url 'product_detail' product.pk %}" class="btn btn-sm btn-outline-success">View</a>
+    {% if user.is_authenticated and user.role == 'customer' %}
+    <form method="post" action="{% url 'add_to_cart' product.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="quantity" value="1">
+        <button type="submit" class="btn btn-sm btn-success">+ Add</button>
+    </form>
+    {% endif %}
+</div>
                         </div>
                     </div>
                 </div>
