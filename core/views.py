@@ -978,6 +978,17 @@ def recurring_order_generate(request, pk):
         messages.error(request, 'No products in this template — please add items first.')
         return redirect('recurring_order_edit', pk=pk)
 
+    # ✅ STOCK CHECK (this is the missing part)
+    for t_item in items:
+        if t_item.quantity > t_item.product.stock_quantity:
+            messages.warning(
+                request,
+                f'Not enough stock for {t_item.product.name}. '
+                f'Available: {t_item.product.stock_quantity} {t_item.product.get_unit_display()}. '
+                f'Please reduce the quantity in the recurring order template.'
+            )
+            return redirect('recurring_order_edit', pk=pk)
+
     day_map = {
         'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
         'friday': 4, 'saturday': 5, 'sunday': 6,
@@ -1011,11 +1022,15 @@ def recurring_order_generate(request, pk):
             subtotal=sub,
         )
 
+        # Optional safety: reduce stock here IF your app expects recurring orders to consume stock immediately.
+        # If stock is reduced elsewhere, leave this out.
+        t_item.product.stock_quantity = max(Decimal('0'), t_item.product.stock_quantity - t_item.quantity)
+        t_item.product.save(update_fields=['stock_quantity'])
+
     order.total_amount = total
     order.commission_amount = order.calculate_commission()
     order.save(update_fields=['total_amount', 'commission_amount'])
 
-    # Keep parent consistent (still pending now, but future-proof)
     try:
         order.sync_status_from_items(save=True)
     except Exception:

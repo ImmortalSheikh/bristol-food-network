@@ -22,13 +22,19 @@
         </thead>
         <tbody>
             {% for product in products %}
-            <tr {% if product.stock_quantity <= product.low_stock_threshold %}class="table-warning"{% endif %}>
+            <tr
+                {% if product.stock_quantity <= 0 %}class="table-danger"
+                {% elif product.stock_quantity <= product.low_stock_threshold %}class="table-warning"
+                {% endif %}
+            >
                 <td>
                     <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none fw-semibold">
                         {{ product.name }}
                     </a>
-                    {% if product.stock_quantity <= product.low_stock_threshold %}
-                    <span class="badge bg-danger ms-1">Low Stock</span>
+                    {% if product.stock_quantity <= 0 %}
+                    <span class="badge bg-danger ms-1">No Stock</span>
+                    {% elif product.stock_quantity <= product.low_stock_threshold %}
+                    <span class="badge bg-warning text-dark ms-1">Low Stock</span>
                     {% endif %}
                 </td>
                 <td>{{ product.category.name }}</td>

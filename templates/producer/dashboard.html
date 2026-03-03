@@ -74,7 +74,11 @@
                 </span>
             </div>
             <small class="text-muted">Stock: {{ product.stock_quantity }} {{ product.get_unit_display }}</small>
-            {% if product.stock_quantity <= product.low_stock_threshold %}
+            {% if product.stock_quantity <= 0 %}
+            <div class="alert alert-danger py-1 px-2 mt-2 small mb-0">
+                <i class="bi bi-x-circle"></i> No stock
+            </div>
+            {% elif product.stock_quantity <= product.low_stock_threshold %}
             <div class="alert alert-warning py-1 px-2 mt-2 small mb-0">
                 <i class="bi bi-exclamation-triangle"></i> Low stock!
             </div>
