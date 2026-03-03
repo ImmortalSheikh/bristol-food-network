@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.html import format_html
 from .models import (
     User, ProducerProfile, CustomerProfile, Category,
     Product, ProductAllergen, Order, OrderItem,
@@ -8,13 +8,10 @@ from .models import (
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(admin.ModelAdmin):
     list_display = ('username', 'email', 'role', 'is_active', 'date_joined')
     list_filter = ('role', 'is_active', 'is_staff')
     search_fields = ('username', 'email', 'first_name', 'last_name')
-    fieldsets = BaseUserAdmin.fieldsets + (
-        ('Role & Contact', {'fields': ('role', 'phone', 'address', 'postcode')}),
-    )
 
 
 @admin.register(ProducerProfile)
@@ -61,13 +58,25 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
-        'pk', 'customer', 'status', 'payment_status',
+        'pk', 'order_type_badge', 'customer', 'status', 'payment_status',
         'total_amount', 'commission_amount', 'delivery_date', 'created_at'
     )
     list_filter = ('status', 'payment_status')
     search_fields = ('customer__username', 'customer__email')
     readonly_fields = ('commission_amount', 'created_at', 'updated_at')
     inlines = [OrderItemInline]
+
+    @admin.display(description='Type')
+    def order_type_badge(self, obj):
+        if obj.recurring_order_id:
+            return format_html(
+                '<span style="background:#0d6efd;color:white;padding:2px 8px;'
+                'border-radius:4px;font-size:11px;font-weight:600;">🔄 Recurring</span>'
+            )
+        return format_html(
+            '<span style="background:#6c757d;color:white;padding:2px 8px;'
+            'border-radius:4px;font-size:11px;">One-off</span>'
+        )
 
 
 @admin.register(PaymentSettlement)

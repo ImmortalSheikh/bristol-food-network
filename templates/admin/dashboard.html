@@ -68,6 +68,7 @@
         <thead class="table-light">
             <tr>
                 <th>Order #</th>
+                <th>Type</th>
                 <th>Customer</th>
                 <th>Total</th>
                 <th>Commission (5%)</th>
@@ -80,6 +81,13 @@
             {% for order in recent_orders %}
             <tr>
                 <td>#{{ order.pk }}</td>
+                <td>  
+                    {% if order.recurring_order_id %}
+                        <span class="badge bg-primary">🔄 Recurring</span>
+                    {% else %}
+                        <span class="badge bg-secondary">One-off</span>
+                    {% endif %}
+                </td>
                 <td>{{ order.customer.get_full_name|default:order.customer.username }}</td>
                 <td>£{{ order.total_amount }}</td>
                 <td>£{{ order.commission_amount }}</td>

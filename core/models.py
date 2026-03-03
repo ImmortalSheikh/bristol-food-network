@@ -199,6 +199,14 @@ class Order(models.Model):
     commission_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     payment_reference = models.CharField(max_length=100, blank=True)
     payment_status = models.CharField(max_length=20, default='pending')
+    payment_status = models.CharField(max_length=20, default='pending')
+    recurring_order = models.ForeignKey(         
+        'RecurringOrder',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_orders',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
