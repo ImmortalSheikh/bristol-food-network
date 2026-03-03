@@ -19,9 +19,15 @@
         <tbody>
             {% for item in order_items %}
             <tr>
-                <td><strong>#{{ item.order.pk }}</strong></td>
-
                 <td>
+                    <strong>#{{ item.order.pk }}</strong>
+                    {% if item.order.recurring_order_id %}
+                    <div class="mt-1">
+                        <span class="badge bg-primary">🔄 Recurring</span>
+                    </div>
+                    {% endif %}
+                </td>
+
                     {{ item.order.customer.get_full_name|default:item.order.customer.username }}
 
                     {% if item.order.customer.role == "community_group" %}

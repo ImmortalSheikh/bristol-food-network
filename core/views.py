@@ -778,6 +778,7 @@ def recurring_order_generate(request, pk):
         delivery_postcode=ro.delivery_postcode,
         delivery_date=delivery_dt,
         special_instructions=ro.special_instructions,
+        recurring_order=ro,
         total_amount=Decimal('0'),
     )
 
