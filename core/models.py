@@ -26,6 +26,13 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+    
+    def save(self, *args, **kwargs):
+        # Ensure Django superusers always behave like your app "admin"
+        if self.is_superuser:
+            self.role = 'admin'
+            self.is_staff = True
+        super().save(*args, **kwargs)
 
 
 class ProducerProfile(models.Model):

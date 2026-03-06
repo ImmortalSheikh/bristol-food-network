@@ -47,7 +47,8 @@ def customer_required(view_func):
 def admin_required(view_func):
     @login_required
     def wrapper(request, *args, **kwargs):
-        if request.user.role != 'admin':
+        # Allow both role-based admin and Django superusers/staff
+        if request.user.role != 'admin' and not request.user.is_superuser:
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -103,7 +104,18 @@ def register_customer(request):
 
 
 def login_view(request):
+    """
+    After login:
+      - admin/superuser -> admin_dashboard
+      - producer -> producer_dashboard
+      - everyone else -> next (if provided) or home
+    """
     if request.user.is_authenticated:
+        # If already logged in, send them somewhere sensible
+        if request.user.role == 'admin' or request.user.is_superuser:
+            return redirect('admin_dashboard')
+        if request.user.is_producer():
+            return redirect('producer_dashboard')
         return redirect('home')
 
     if request.method == 'POST':
@@ -112,8 +124,16 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, f'Welcome back, {user.first_name or user.username}!')
-            if user.role == 'admin':
+
+            # Admin redirect
+            if user.role == 'admin' or user.is_superuser:
                 return redirect('admin_dashboard')
+
+            # Producer redirect (optional but usually expected)
+            if user.is_producer():
+                return redirect('producer_dashboard')
+
+            # Default: respect ?next=
             return redirect(request.GET.get('next', 'home'))
         else:
             messages.error(request, 'Invalid username or password.')
@@ -557,12 +577,10 @@ def producer_update_order_status(request, item_pk):
         if new_idx > current_idx:
             old_item_status = item.producer_status
 
-            # Update item status
             item.producer_status = new_status
             item.producer_notes = notes
             item.save(update_fields=['producer_status', 'producer_notes'])
 
-            # Audit: item status change
             OrderStatusHistory.objects.create(
                 order=item.order,
                 order_item=item,
@@ -572,10 +590,8 @@ def producer_update_order_status(request, item_pk):
                 notes=notes,
             )
 
-            # Sync parent Order.status so admin/customer sees it
             changed, old_order_status, new_order_status = item.order.sync_status_from_items(save=True)
 
-            # Audit: parent order status change
             if changed:
                 OrderStatusHistory.objects.create(
                     order=item.order,
