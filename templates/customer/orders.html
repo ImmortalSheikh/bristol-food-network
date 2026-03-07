@@ -2,13 +2,40 @@
 {% block title %}My Orders — Bristol Food Network{% endblock %}
 {% block content %}
 <h2 class="mb-4">My Orders</h2>
+
+<!-- ── Filters ── -->
+<form method="get" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+    <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        <option value="pending"   {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
+        <option value="ready"     {% if status_filter == 'ready' %}selected{% endif %}>Ready for Delivery</option>
+        <option value="delivered" {% if status_filter == 'delivered' %}selected{% endif %}>Delivered</option>
+        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+    </select>
+    <input type="date" name="date_from" class="form-control form-control-sm" style="width:auto;"
+           value="{{ date_from }}" placeholder="From date">
+    <input type="date" name="date_to" class="form-control form-control-sm" style="width:auto;"
+           value="{{ date_to }}" placeholder="To date">
+    <button type="submit" class="btn btn-sm btn-outline-success">Filter</button>
+    {% if status_filter or date_from or date_to %}
+    <a href="{% url 'customer_orders' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+    {% endif %}
+</form>
+
 {% if not orders %}
 <div class="text-center py-5">
     <div class="fs-1 mb-3">📦</div>
-    <h4>No orders yet</h4>
-    <a href="{% url 'marketplace' %}" class="btn btn-primary mt-3">Start Shopping</a>
+    {% if status_filter or date_from or date_to %}
+        <h4>No orders match your filters</h4>
+        <a href="{% url 'customer_orders' %}" class="btn btn-outline-secondary mt-3">Clear Filters</a>
+    {% else %}
+        <h4>No orders yet</h4>
+        <a href="{% url 'marketplace' %}" class="btn btn-primary mt-3">Start Shopping</a>
+    {% endif %}
 </div>
 {% else %}
+<p class="text-muted small mb-3">Showing {{ orders|length }} order{{ orders|length|pluralize }}</p>
 {% for order in orders %}
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">

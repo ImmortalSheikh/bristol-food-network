@@ -461,11 +461,37 @@ def order_confirmation(request, pk):
 
 @customer_required
 def customer_orders(request):
+    from datetime import datetime
+
+    status_filter = request.GET.get('status', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+
     orders = Order.objects.filter(
         customer=request.user
     ).prefetch_related('items__product', 'items__producer').order_by('-created_at')
 
-    return render(request, 'customer/orders.html', {'orders': orders})
+    if status_filter:
+        orders = orders.filter(status=status_filter)
+
+    if date_from:
+        try:
+            orders = orders.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
+    if date_to:
+        try:
+            orders = orders.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
+    return render(request, 'customer/orders.html', {
+        'orders': orders,
+        'status_filter': status_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+    })
 
 
 # ─────────────────────────────────────────────────────────────
@@ -474,20 +500,45 @@ def customer_orders(request):
 
 @producer_required
 def producer_dashboard(request):
+    from django.db.models import Sum
+
     profile = get_object_or_404(ProducerProfile, user=request.user)
     products = Product.objects.filter(producer=profile).order_by('-updated_at')
     pending_orders = OrderItem.objects.filter(
         producer=profile,
         producer_status='pending'
     ).select_related('order', 'order__customer', 'product').order_by('order__delivery_date')
-
     low_stock_products = [p for p in products if p.stock_quantity <= p.low_stock_threshold]
+
+    # TC-020: Analytics
+    all_items = OrderItem.objects.filter(producer=profile)
+    fulfilled_items = all_items.filter(producer_status='delivered')
+    total_revenue = all_items.aggregate(t=Sum('subtotal'))['t'] or Decimal('0')
+    total_revenue = round(total_revenue, 2)
+    commission_paid = round(total_revenue * Decimal('0.05'), 2)
+    net_revenue = round(total_revenue - commission_paid, 2)
+    total_fulfilled = fulfilled_items.count()
+    total_units_sold = all_items.aggregate(t=Sum('quantity'))['t'] or 0
+    best_sellers = (
+        all_items
+        .values('product__name')
+        .annotate(units_sold=Sum('quantity'), revenue=Sum('subtotal'))
+        .order_by('-revenue')[:5]
+    )
 
     return render(request, 'producer/dashboard.html', {
         'profile': profile,
         'products': products,
         'pending_orders': pending_orders,
         'low_stock_products': low_stock_products,
+        'total_products': products.count(),
+        'total_fulfilled': total_fulfilled,
+        'total_revenue': total_revenue,
+        'net_revenue': net_revenue,
+        'commission_paid': commission_paid,
+        'total_units_sold': total_units_sold,
+        'low_stock_count': len(low_stock_products),
+        'best_sellers': best_sellers,
     })
 
 

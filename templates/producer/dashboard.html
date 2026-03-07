@@ -11,21 +11,90 @@
     </a>
 </div>
 
-<div class="row g-3 mb-4">
+<!-- ── Analytics Stats Row 1 ── -->
+<div class="row g-3 mb-3">
     <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-success">{{ products|length }}</div>
+        <div class="card text-center p-3 border-success">
+            <div class="fs-2 fw-bold text-success">{{ total_products }}</div>
             <div class="text-muted small">Total Products</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center p-3">
+        <div class="card text-center p-3 border-warning">
             <div class="fs-2 fw-bold text-warning">{{ pending_orders|length }}</div>
             <div class="text-muted small">Pending Orders</div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3 border-primary">
+            <div class="fs-2 fw-bold text-primary">{{ total_fulfilled }}</div>
+            <div class="text-muted small">Orders Fulfilled</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3 border-info">
+            <div class="fs-2 fw-bold text-info">£{{ total_revenue }}</div>
+            <div class="text-muted small">Gross Revenue</div>
+        </div>
+    </div>
 </div>
 
+<!-- ── Analytics Stats Row 2 ── -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="fs-2 fw-bold text-danger">{{ low_stock_count }}</div>
+            <div class="text-muted small">Low Stock Alerts</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="fs-2 fw-bold text-success">£{{ net_revenue }}</div>
+            <div class="text-muted small">Net Revenue (after 5%)</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="fs-2 fw-bold text-secondary">{{ total_units_sold }}</div>
+            <div class="text-muted small">Total Units Sold</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="fs-2 fw-bold text-dark">£{{ commission_paid }}</div>
+            <div class="text-muted small">Commission Paid (5%)</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Best Selling Products ── -->
+{% if best_sellers %}
+<h5 class="mb-3">
+    <i class="bi bi-bar-chart-fill text-success me-1"></i> Best Selling Products
+</h5>
+<div class="table-responsive mb-4">
+    <table class="table table-sm table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Product</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bs in best_sellers %}
+            <tr>
+                <td>{{ bs.product__name }}</td>
+                <td>{{ bs.units_sold }}</td>
+                <td>£{{ bs.revenue }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- ── Incoming Orders ── -->
 <h5>Incoming Orders</h5>
 {% if pending_orders %}
 <div class="table-responsive mb-4">
@@ -62,6 +131,7 @@
 <p class="text-muted">No pending orders.</p>
 {% endif %}
 
+<!-- ── Your Products ── -->
 <h5>Your Products</h5>
 <div class="row g-3">
     {% for product in products|slice:":6" %}
@@ -76,7 +146,7 @@
             <small class="text-muted">Stock: {{ product.stock_quantity }} {{ product.get_unit_display }}</small>
             {% if product.stock_quantity <= 0 %}
             <div class="alert alert-danger py-1 px-2 mt-2 small mb-0">
-                <i class="bi bi-x-circle"></i> No stock
+                <i class="bi bi-x-circle"></i> Out of stock
             </div>
             {% elif product.stock_quantity <= product.low_stock_threshold %}
             <div class="alert alert-warning py-1 px-2 mt-2 small mb-0">
@@ -90,4 +160,5 @@
     </div>
     {% endfor %}
 </div>
+
 {% endblock %}
