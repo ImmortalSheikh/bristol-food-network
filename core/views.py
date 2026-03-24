@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import date, timedelta, datetime
+import requests
 
 from .models import PaymentSettlement
 from .models import (
@@ -381,6 +382,27 @@ def checkout(request):
 
         total = cart.total
 
+        # Call payment microservice before creating the order
+        try:
+            payment_response = requests.post(
+                'http://payment:5000/pay',
+                json={
+                    'amount': float(total),
+                    'customer_id': request.user.id,
+                },
+                timeout=10
+            )
+        except requests.RequestException:
+            messages.error(request, 'Payment service is unavailable. Please try again.')
+            return redirect('checkout')
+
+        if payment_response.status_code != 200:
+            messages.error(request, 'Payment failed. Please try again.')
+            return redirect('checkout')
+
+        payment_data = payment_response.json()
+        transaction_id = payment_data.get('transaction_id', '')
+
         order = Order.objects.create(
             customer=request.user,
             delivery_address=delivery_address,
@@ -388,6 +410,8 @@ def checkout(request):
             delivery_date=delivery_date,
             special_instructions=special_instructions,
             total_amount=total,
+            payment_status='paid',
+            payment_reference=transaction_id,
         )
         order.calculate_commission()
         order.save(update_fields=['commission_amount'])
@@ -420,7 +444,7 @@ def checkout(request):
             old_status='',
             new_status='pending',
             changed_by=request.user,
-            notes='Order placed by customer.',
+            notes=f'Order placed by customer. Payment reference: {transaction_id}',
         )
 
         messages.success(request, f'Order #{order.pk} placed successfully!')
@@ -711,7 +735,8 @@ def producer_payments(request):
 
 @producer_required
 def producer_payments_csv(request):
-    import csv, datetime as dt
+    import csv
+    import datetime as dt
     from django.http import HttpResponse
 
     profile = get_object_or_404(ProducerProfile, user=request.user)
@@ -811,7 +836,8 @@ def admin_commission_report(request):
 
 @admin_required
 def admin_commission_csv(request):
-    import csv, datetime as dt
+    import csv
+    import datetime as dt
     from django.http import HttpResponse
 
     orders = Order.objects.filter(
@@ -1045,7 +1071,6 @@ def recurring_order_generate(request, pk):
         messages.error(request, 'No products in this template — please add items first.')
         return redirect('recurring_order_edit', pk=pk)
 
-    # ✅ STOCK CHECK (this is the missing part)
     for t_item in items:
         if t_item.quantity > t_item.product.stock_quantity:
             messages.warning(
@@ -1090,8 +1115,6 @@ def recurring_order_generate(request, pk):
             subtotal=sub,
         )
 
-        # Optional safety: reduce stock here IF your app expects recurring orders to consume stock immediately.
-        # If stock is reduced elsewhere, leave this out.
         t_item.product.stock_quantity = max(Decimal('0'), t_item.product.stock_quantity - t_item.quantity)
         t_item.product.save(update_fields=['stock_quantity'])
 
