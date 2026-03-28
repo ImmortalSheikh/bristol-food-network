@@ -8,6 +8,7 @@ from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import date, timedelta, datetime
 import requests
+import math
 
 from .models import PaymentSettlement
 from .models import (
@@ -19,6 +20,48 @@ from .forms import (
     ProducerRegistrationForm, CustomerRegistrationForm,
     LoginForm, ProductForm, CartItemForm, RecurringOrderForm
 )
+
+# ─────────────────────────────────────────────────────────────
+# FOOD MILES HELPER
+# ─────────────────────────────────────────────────────────────
+
+def _get_postcode_coords(postcode):
+    """Fetch lat/lng for a UK postcode from postcodes.io (free, no API key)."""
+    try:
+        postcode_clean = postcode.strip().replace(' ', '')
+        response = requests.get(
+            f"https://api.postcodes.io/postcodes/{postcode_clean}",
+            timeout=5
+        )
+        if response.status_code == 200:
+            data = response.json()
+            return data['result']['latitude'], data['result']['longitude']
+    except Exception:
+        pass
+    return None, None
+
+
+def _haversine_miles(lat1, lon1, lat2, lon2):
+    """Calculate straight-line distance in miles between two lat/lng points."""
+    R = 3958.8  # Earth radius in miles
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    return round(R * c, 1)
+
+
+def _calculate_food_miles(customer_postcode, producer_postcode):
+    """Return distance in miles between customer and producer, or None on failure."""
+    if not customer_postcode or not producer_postcode:
+        return None
+    lat1, lon1 = _get_postcode_coords(customer_postcode)
+    lat2, lon2 = _get_postcode_coords(producer_postcode)
+    if None in (lat1, lon1, lat2, lon2):
+        return None
+    return _haversine_miles(lat1, lon1, lat2, lon2)
+
 
 # ─────────────────────────────────────────────────────────────
 # DECORATORS
@@ -48,7 +91,6 @@ def customer_required(view_func):
 def admin_required(view_func):
     @login_required
     def wrapper(request, *args, **kwargs):
-        # Allow both role-based admin and Django superusers/staff
         if request.user.role != 'admin' and not request.user.is_superuser:
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
@@ -71,7 +113,6 @@ def restaurant_required(view_func):
 # ─────────────────────────────────────────────────────────────
 
 def register_choice(request):
-    """Landing page — choose producer or customer registration."""
     return render(request, 'auth/register_choice.html')
 
 
@@ -105,14 +146,7 @@ def register_customer(request):
 
 
 def login_view(request):
-    """
-    After login:
-      - admin/superuser -> admin_dashboard
-      - producer -> producer_dashboard
-      - everyone else -> next (if provided) or home
-    """
     if request.user.is_authenticated:
-        # If already logged in, send them somewhere sensible
         if request.user.role == 'admin' or request.user.is_superuser:
             return redirect('admin_dashboard')
         if request.user.is_producer():
@@ -125,16 +159,10 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, f'Welcome back, {user.first_name or user.username}!')
-
-            # Admin redirect
             if user.role == 'admin' or user.is_superuser:
                 return redirect('admin_dashboard')
-
-            # Producer redirect (optional but usually expected)
             if user.is_producer():
                 return redirect('producer_dashboard')
-
-            # Default: respect ?next=
             return redirect(request.GET.get('next', 'home'))
         else:
             messages.error(request, 'Invalid username or password.')
@@ -212,10 +240,22 @@ def product_detail(request, pk):
         Product.objects.select_related('producer', 'category').prefetch_related('product_allergens'),
         pk=pk
     )
+
+    # Calculate food miles if customer is logged in
+    food_miles = None
+    if request.user.is_authenticated and not request.user.is_producer():
+        try:
+            customer_postcode = request.user.customer_profile.delivery_postcode
+            producer_postcode = product.producer.farm_postcode
+            food_miles = _calculate_food_miles(customer_postcode, producer_postcode)
+        except Exception:
+            pass
+
     return render(request, 'marketplace/product_detail.html', {
         'product': product,
         'allergens': product.product_allergens.all(),
         'form': CartItemForm(initial={'quantity': 1}),
+        'food_miles': food_miles,
     })
 
 
@@ -237,17 +277,36 @@ def cart_view(request):
     cart = _get_or_create_cart(request.user)
     items = cart.cart_items.select_related('product', 'product__producer').all()
 
+    customer_postcode = None
+    try:
+        customer_postcode = request.user.customer_profile.delivery_postcode
+    except Exception:
+        pass
+
     by_producer = {}
+    total_food_miles = 0
+
     for item in items:
         p = item.product.producer
         if p.pk not in by_producer:
-            by_producer[p.pk] = {'producer': p, 'items': [], 'subtotal': Decimal('0')}
+            producer_miles = None
+            if customer_postcode:
+                producer_miles = _calculate_food_miles(customer_postcode, p.farm_postcode)
+                if producer_miles:
+                    total_food_miles += producer_miles
+            by_producer[p.pk] = {
+                'producer': p,
+                'items': [],
+                'subtotal': Decimal('0'),
+                'food_miles': producer_miles,
+            }
         by_producer[p.pk]['items'].append(item)
         by_producer[p.pk]['subtotal'] += item.subtotal
 
     return render(request, 'cart/cart.html', {
         'cart': cart,
         'by_producer': by_producer.values(),
+        'total_food_miles': round(total_food_miles, 1) if total_food_miles else None,
     })
 
 
@@ -382,7 +441,6 @@ def checkout(request):
 
         total = cart.total
 
-        # Call payment microservice before creating the order
         try:
             payment_response = requests.post(
                 "http://payment:5000/pay",
@@ -406,7 +464,7 @@ def checkout(request):
                 error_message = "Payment failed. Please try again."
             messages.error(request, error_message)
             return redirect('checkout')
-        
+
         payment_data = payment_response.json()
         transaction_id = payment_data.get('transaction_id', '')
 
@@ -440,7 +498,6 @@ def checkout(request):
 
         cart.cart_items.all().delete()
 
-        # Keep parent status consistent with items (still pending at this point, but future-proof)
         try:
             order.sync_status_from_items(save=True)
         except Exception:
@@ -478,11 +535,28 @@ def order_confirmation(request, pk):
 
     is_bulk_order = (order.customer.role == 'community_group')
 
+    # Calculate food miles per producer
+    customer_postcode = order.delivery_postcode
+    seen_producers = {}
+    total_food_miles = 0
+
+    for item in items:
+        producer = item.producer
+        if producer.pk not in seen_producers:
+            miles = _calculate_food_miles(customer_postcode, producer.farm_postcode)
+            seen_producers[producer.pk] = miles
+            if miles:
+                total_food_miles += miles
+
+    total_food_miles = round(total_food_miles, 1) if total_food_miles else None
+
     return render(request, 'cart/order_confirmation.html', {
         'order': order,
         'items': items,
         'organisation_name': organisation_name,
         'is_bulk_order': is_bulk_order,
+        'producer_food_miles': seen_producers,
+        'total_food_miles': total_food_miles,
     })
 
 
@@ -541,7 +615,6 @@ def producer_dashboard(request):
     ).select_related('order', 'order__customer', 'product').order_by('order__delivery_date')
     low_stock_products = [p for p in products if p.stock_quantity <= p.low_stock_threshold]
 
-    # TC-020: Analytics
     all_items = OrderItem.objects.filter(producer=profile)
     fulfilled_items = all_items.filter(producer_status='delivered')
     total_revenue = all_items.aggregate(t=Sum('subtotal'))['t'] or Decimal('0')
@@ -658,7 +731,6 @@ def producer_update_order_status(request, item_pk):
 
         if new_idx > current_idx:
             old_item_status = item.producer_status
-
             item.producer_status = new_status
             item.producer_notes = notes
             item.save(update_fields=['producer_status', 'producer_notes'])
@@ -1121,7 +1193,6 @@ def recurring_order_generate(request, pk):
             unit_price=price,
             subtotal=sub,
         )
-
         t_item.product.stock_quantity = max(Decimal('0'), t_item.product.stock_quantity - t_item.quantity)
         t_item.product.save(update_fields=['stock_quantity'])
 

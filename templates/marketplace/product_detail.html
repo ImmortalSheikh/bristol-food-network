@@ -28,6 +28,16 @@
             {% if product.is_organic %}<span class="badge badge-organic me-1 py-2 px-3">✓ Certified Organic</span>{% endif %}
             {% if product.availability == 'in_season' %}<span class="badge seasonal-badge me-1 py-2 px-3">🌱 In Season</span>{% endif %}
             {% if product.is_surplus %}<span class="badge surplus-badge me-1 py-2 px-3">⚡ {{ product.surplus_discount_percent }}% Off — Surplus Deal</span>{% endif %}
+
+            <!-- Food miles badge -->
+            {% if food_miles is not None %}
+            <span class="badge py-2 px-3 me-1
+                {% if food_miles <= 5 %}bg-success
+                {% elif food_miles <= 15 %}bg-warning text-dark
+                {% else %}bg-secondary{% endif %}">
+                🌍 {{ food_miles }} miles away
+            </span>
+            {% endif %}
         </div>
 
         <div class="mb-3">
@@ -50,10 +60,13 @@
                 {% if product.best_before_date %}<tr><th>Best Before</th><td>{{ product.best_before_date }}</td></tr>{% endif %}
                 {% if product.season_start_month %}<tr><th>Season</th><td>Month {{ product.season_start_month }} – {{ product.season_end_month }}</td></tr>{% endif %}
                 <tr><th>Stock</th><td>{{ product.stock_quantity }} {{ product.get_unit_display }} available</td></tr>
+                {% if food_miles is not None %}
+                <tr><th>Food Miles</th><td>{{ food_miles }} miles from your delivery address</td></tr>
+                {% endif %}
             </tbody>
         </table>
 
-        <!-- Allergen Warning (prominent, as required by TC-015) -->
+        <!-- Allergen Warning -->
         <div class="mb-3">
             {% if allergens %}
             <div class="alert alert-danger d-flex align-items-start" role="alert">
