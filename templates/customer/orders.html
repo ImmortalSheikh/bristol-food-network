@@ -60,7 +60,28 @@
                 <table class="table table-sm mb-0">
                     {% for item in order.items.all %}
                     <tr>
-                        <td>{{ item.product.name }} × {{ item.quantity }}</td>
+                        <td>
+                            {{ item.product.name }} × {{ item.quantity }}
+
+                            <!-- Producer status badge per item -->
+                            <span class="badge ms-1
+                                {% if item.producer_status == 'delivered' %}bg-success
+                                {% elif item.producer_status == 'ready' %}bg-info
+                                {% elif item.producer_status == 'confirmed' %}bg-primary
+                                {% else %}bg-warning text-dark{% endif %}">
+                                {{ item.get_producer_status_display }}
+                            </span>
+
+                            <!-- Producer notes if they left a comment -->
+                            {% if item.producer_notes %}
+                            <div class="mt-1 p-2 rounded" style="background: var(--bs-light, #f8f9fa); border-left: 3px solid #0d6efd;">
+                                <small class="text-muted">
+                                    <strong>{{ item.producer.business_name }}:</strong>
+                                    {{ item.producer_notes }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </td>
                         <td class="text-muted small">{{ item.producer.business_name }}</td>
                         <td class="text-end">£{{ item.subtotal }}</td>
                     </tr>

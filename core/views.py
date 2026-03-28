@@ -385,10 +385,12 @@ def checkout(request):
         # Call payment microservice before creating the order
         try:
             payment_response = requests.post(
-                'http://payment:5000/pay',
+                "http://payment:5000/pay",
                 json={
-                    'amount': float(total),
-                    'customer_id': request.user.id,
+                    "amount": float(total),
+                    "currency": "gbp",
+                    "payment_method": "pm_card_visa",
+                    "customer_id": request.user.id,
                 },
                 timeout=10
             )
@@ -397,9 +399,14 @@ def checkout(request):
             return redirect('checkout')
 
         if payment_response.status_code != 200:
-            messages.error(request, 'Payment failed. Please try again.')
+            try:
+                payment_data = payment_response.json()
+                error_message = payment_data.get("message", "Payment failed. Please try again.")
+            except Exception:
+                error_message = "Payment failed. Please try again."
+            messages.error(request, error_message)
             return redirect('checkout')
-
+        
         payment_data = payment_response.json()
         transaction_id = payment_data.get('transaction_id', '')
 

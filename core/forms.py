@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from .models import User, ProducerProfile, CustomerProfile, Product, ProductAllergen, ALLERGEN_CHOICES
 
 
@@ -170,15 +171,28 @@ class ProductForm(forms.ModelForm):
             'is_surplus', 'surplus_discount_percent', 'surplus_expiry',
         ]
         widgets = {
-            'harvest_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'best_before_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'surplus_expiry': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'harvest_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+            }),
+            'best_before_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'min': timezone.now().date().isoformat(),
+            }),
+            'surplus_expiry': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'form-control',
+            }),
             'description': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
         super().__init__(*args, **kwargs)
+
+        # Always set min to today so it stays current on each page load
+        self.fields['best_before_date'].widget.attrs['min'] = timezone.now().date().isoformat()
 
         # Pre-populate allergens if editing
         if instance:
@@ -195,6 +209,13 @@ class ProductForm(forms.ModelForm):
                 field.widget.attrs['class'] = 'form-select'
             elif not isinstance(field.widget, (forms.Textarea, forms.DateInput, forms.DateTimeInput)):
                 field.widget.attrs['class'] = 'form-control'
+
+    def clean_best_before_date(self):
+        """Server-side validation as a backup to the HTML min attribute"""
+        date = self.cleaned_data.get('best_before_date')
+        if date and date < timezone.now().date():
+            raise ValidationError('Best before date cannot be in the past.')
+        return date
 
     def save_allergens(self, product):
         """Save allergen selections — call this after product.save()"""
