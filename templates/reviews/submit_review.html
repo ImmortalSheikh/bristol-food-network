@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block title %}Write a Review — {{ product.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'marketplace' %}">Marketplace</a></li>
+          <li class="breadcrumb-item"><a href="{% url 'product_detail' pk=product.pk %}">{{ product.name }}</a></li>
+          <li class="breadcrumb-item active">Write a Review</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white">
+          <h4 class="mb-0"><i class="bi bi-star-fill me-2"></i>Write a Review</h4>
+        </div>
+        <div class="card-body p-4">
+
+          <div class="d-flex align-items-center mb-4 p-3 bg-light rounded">
+            {% if product.image %}
+              <img src="{{ product.image.url }}" alt="{{ product.name }}" class="rounded me-3" style="width:60px;height:60px;object-fit:cover;">
+            {% endif %}
+            <div>
+              <h5 class="mb-0">{{ product.name }}</h5>
+              <small class="text-muted">{{ product.producer.business_name }}</small>
+            </div>
+          </div>
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+
+            <!-- Star Rating -->
+            <div class="mb-4">
+              <label class="form-label fw-bold">Your Rating <span class="text-danger">*</span></label>
+              <div class="star-rating d-flex gap-2 fs-2" id="starRating">
+                {% for i in "12345" %}
+                  <span class="star" data-value="{{ forloop.counter }}" style="cursor:pointer; color:#ccc;">&#9733;</span>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="rating" id="ratingInput" required>
+              <div class="form-text">Click to select your rating (1 = Poor, 5 = Excellent)</div>
+            </div>
+
+            <!-- Title -->
+            <div class="mb-3">
+              <label for="title" class="form-label fw-bold">Review Title <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="title" name="title"
+                     placeholder="e.g. Excellent quality and flavour" maxlength="200" required>
+            </div>
+
+            <!-- Body -->
+            <div class="mb-3">
+              <label for="body" class="form-label fw-bold">Your Review <span class="text-danger">*</span></label>
+              <textarea class="form-control" id="body" name="body" rows="5"
+                        placeholder="Tell other customers about your experience with this product..." required></textarea>
+            </div>
+
+            <!-- Verified Purchase Badge Info -->
+            <div class="alert alert-info py-2 mb-3">
+              <i class="bi bi-patch-check-fill me-2 text-success"></i>
+              Your review will show a <strong>Verified Purchase</strong> badge as you have ordered and received this product.
+            </div>
+
+            <!-- Anonymous Option -->
+            <div class="mb-4 form-check">
+              <input type="checkbox" class="form-check-input" id="is_anonymous" name="is_anonymous">
+              <label class="form-check-label" for="is_anonymous">
+                Post anonymously (your name will not be shown)
+              </label>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-success px-4">
+                <i class="bi bi-send me-2"></i>Submit Review
+              </button>
+              <a href="{% url 'product_detail' pk=product.pk %}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+
+            <script>
+            document.querySelector('form').addEventListener('submit', function(e) {
+                if (!document.getElementById('ratingInput').value) {
+                    e.preventDefault();
+                    alert('Please select a star rating before submitting.');
+                }
+            });
+            </script>
+
+
+          </form>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const stars     = document.querySelectorAll('.star');
+  const ratingInput = document.getElementById('ratingInput');
+
+  stars.forEach(star => {
+    star.addEventListener('mouseover', () => highlightStars(star.dataset.value));
+    star.addEventListener('mouseout',  () => highlightStars(ratingInput.value || 0));
+    star.addEventListener('click',     () => {
+      ratingInput.value = star.dataset.value;
+      highlightStars(star.dataset.value);
+    });
+  });
+
+  function highlightStars(value) {
+    stars.forEach(s => {
+      s.style.color = s.dataset.value <= value ? '#f5a623' : '#ccc';
+    });
+  }
+</script>
+{% endblock %}

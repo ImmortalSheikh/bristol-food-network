@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Review Moderation{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <h2 class="mb-4"><i class="bi bi-shield-check me-2 text-success"></i>Review Moderation</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Flagged Reviews -->
+  <div class="card border-danger mb-4">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="bi bi-flag-fill me-2"></i>Flagged Reviews</h5>
+      <span class="badge bg-white text-danger">{{ flagged_reviews.count }}</span>
+    </div>
+    <div class="card-body p-0">
+      {% if flagged_reviews %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Product</th><th>Customer</th><th>Rating</th>
+                <th>Title</th><th>Date</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for review in flagged_reviews %}
+              <tr>
+                <td>{{ review.product.name }}</td>
+                <td>{{ review.display_name }}</td>
+                <td>
+                  {% for i in "12345" %}
+                    <span style="color:{% if forloop.counter <= review.rating %}#f5a623{% else %}#ccc{% endif %};">★</span>
+                  {% endfor %}
+                </td>
+                <td>{{ review.title }}</td>
+                <td>{{ review.created_at|date:"d M Y" }}</td>
+                <td>
+                  <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="review_pk" value="{{ review.pk }}">
+                    <button name="action" value="unflag" class="btn btn-sm btn-outline-success me-1">Approve</button>
+                    <button name="action" value="delete" class="btn btn-sm btn-danger"
+                            onclick="return confirm('Delete this review?')">Delete</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="bi bi-check-circle fs-2 text-success"></i>
+          <p class="mt-2">No flagged reviews. All clear!</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- All Reviews -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="bi bi-star-fill me-2 text-warning"></i>All Reviews</h5>
+      <span class="badge bg-secondary">{{ all_reviews.count }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Product</th><th>Customer</th><th>Rating</th>
+              <th>Title</th><th>Date</th><th>Status</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for review in all_reviews %}
+            <tr {% if review.is_flagged %}class="table-warning"{% endif %}>
+              <td>{{ review.product.name }}</td>
+              <td>{{ review.display_name }}</td>
+              <td>
+                {% for i in "12345" %}
+                  <span style="color:{% if forloop.counter <= review.rating %}#f5a623{% else %}#ccc{% endif %};">★</span>
+                {% endfor %}
+              </td>
+              <td>{{ review.title|truncatechars:40 }}</td>
+              <td>{{ review.created_at|date:"d M Y" }}</td>
+              <td>
+                {% if review.is_flagged %}
+                  <span class="badge bg-danger">Flagged</span>
+                {% else %}
+                  <span class="badge bg-success">Active</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="review_pk" value="{{ review.pk }}">
+                  <button name="action" value="delete" class="btn btn-sm btn-outline-danger"
+                          onclick="return confirm('Delete this review?')">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

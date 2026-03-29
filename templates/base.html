@@ -69,6 +69,13 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin_reviews' %}">
+                        <i class="bi bi-star-fill"></i> Reviews
+                    </a>
+                </li>
+
+
                 {% elif user.is_authenticated and user.is_producer %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'producer_dashboard' %}">Dashboard</a>
