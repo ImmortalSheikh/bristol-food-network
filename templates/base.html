@@ -21,6 +21,9 @@
         body {
             background: var(--cream);
             font-family: 'DM Sans', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         /* ── NAVBAR ── */
@@ -352,7 +355,7 @@
     </div>
 </nav>
 
-<div class="container mt-4">
+<div class="container mt-4" style="flex:1;">
 
     {% if messages %}
         {% for message in messages %}

@@ -1,164 +1,179 @@
 {% extends 'base.html' %}
-{% block title %}Producer Dashboard — Bristol Food Network{% endblock %}
+{% block title %}Dashboard — Bristol Food Network{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2>Dashboard</h2>
-        <p class="text-muted mb-0">{{ profile.business_name }}</p>
-    </div>
-    <a href="{% url 'product_create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Add New Product
-    </a>
+
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .page-sub { color:#718096; font-size:0.9rem; }
+  .btn-add { background:var(--green-deep);color:white;border:none;border-radius:100px;padding:10px 24px;font-size:0.9rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s; }
+  .btn-add:hover { background:var(--green-mid);color:white;transform:translateY(-1px);box-shadow:0 4px 16px rgba(45,106,79,0.25); }
+  .stat-card { background:#fff;border-radius:18px;padding:24px 20px;border:2px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.04);transition:all 0.2s; }
+  .stat-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08); }
+  .stat-num { font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:4px; }
+  .stat-label { font-size:0.8rem;color:#718096;font-weight:500; }
+  .section-title { font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--green-deep);margin-bottom:16px;display:flex;align-items:center;gap:8px; }
+  .data-card { background:#fff;border-radius:18px;border:1px solid #e8f0eb;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:28px; }
+  .data-card-header { background:var(--green-deep);color:white;padding:14px 20px;font-weight:600;font-size:0.88rem;letter-spacing:0.03em; }
+  .data-table { width:100%;border-collapse:collapse; }
+  .data-table th { padding:11px 20px;font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#718096;border-bottom:1px solid #f0f4f1;background:#fafafa; }
+  .data-table td { padding:14px 20px;font-size:0.9rem;border-bottom:1px solid #f8fafc;vertical-align:middle; }
+  .data-table tr:last-child td { border-bottom:none; }
+  .data-table tbody tr:hover { background:#fafcfa; }
+  .status-pill { border-radius:100px;padding:4px 12px;font-size:0.75rem;font-weight:700;display:inline-block; }
+  .s-pending   { background:#fef3c7;color:#92400e; }
+  .s-confirmed { background:#dbeafe;color:#1e40af; }
+  .s-ready     { background:#e0f2fe;color:#0369a1; }
+  .s-delivered { background:#dcfce7;color:#166534; }
+  .btn-manage { background:transparent;border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:600;color:#4a5568;text-decoration:none;transition:all 0.15s; }
+  .btn-manage:hover { border-color:var(--green-light);color:var(--green-deep);background:var(--green-pale); }
+  .product-mini { background:#fff;border-radius:14px;border:1px solid #e8f0eb;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,0.03);transition:all 0.2s; }
+  .product-mini:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.07); }
+  .btn-edit-mini { background:transparent;border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:600;color:#4a5568;text-decoration:none;transition:all 0.15s; }
+  .btn-edit-mini:hover { border-color:var(--green-light);color:var(--green-deep); }
+</style>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="page-title mb-1">Dashboard</h1>
+    <div class="page-sub"><i class="bi bi-shop me-1"></i>{{ profile.business_name }}</div>
+  </div>
+  <a href="{% url 'product_create' %}" class="btn-add">
+    <i class="bi bi-plus-circle-fill"></i> Add New Product
+  </a>
 </div>
 
-<!-- ── Analytics Stats Row 1 ── -->
+<!-- Stats Row 1 -->
 <div class="row g-3 mb-3">
-    <div class="col-md-3">
-        <div class="card text-center p-3 border-success">
-            <div class="fs-2 fw-bold text-success">{{ total_products }}</div>
-            <div class="text-muted small">Total Products</div>
-        </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#bbf7d0;">
+      <div class="stat-num" style="color:#16a34a;">{{ total_products }}</div>
+      <div class="stat-label">Total Products</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3 border-warning">
-            <div class="fs-2 fw-bold text-warning">{{ pending_orders|length }}</div>
-            <div class="text-muted small">Pending Orders</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#fde68a;">
+      <div class="stat-num" style="color:#d97706;">{{ pending_orders|length }}</div>
+      <div class="stat-label">Pending Orders</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3 border-primary">
-            <div class="fs-2 fw-bold text-primary">{{ total_fulfilled }}</div>
-            <div class="text-muted small">Orders Fulfilled</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#bfdbfe;">
+      <div class="stat-num" style="color:#2563eb;">{{ total_fulfilled }}</div>
+      <div class="stat-label">Orders Fulfilled</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3 border-info">
-            <div class="fs-2 fw-bold text-info">£{{ total_revenue }}</div>
-            <div class="text-muted small">Gross Revenue</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#a5f3fc;">
+      <div class="stat-num" style="color:#0891b2;">£{{ total_revenue }}</div>
+      <div class="stat-label">Gross Revenue</div>
     </div>
+  </div>
 </div>
 
-<!-- ── Analytics Stats Row 2 ── -->
+<!-- Stats Row 2 -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-danger">{{ low_stock_count }}</div>
-            <div class="text-muted small">Low Stock Alerts</div>
-        </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#fecaca;">
+      <div class="stat-num" style="color:#dc2626;">{{ low_stock_count }}</div>
+      <div class="stat-label">Low Stock Alerts</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-success">£{{ net_revenue }}</div>
-            <div class="text-muted small">Net Revenue (after 5%)</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#bbf7d0;">
+      <div class="stat-num" style="color:#16a34a;">£{{ net_revenue }}</div>
+      <div class="stat-label">Net Revenue (after 5%)</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-secondary">{{ total_units_sold }}</div>
-            <div class="text-muted small">Total Units Sold</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-num" style="color:#64748b;">{{ total_units_sold }}</div>
+      <div class="stat-label">Total Units Sold</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-dark">£{{ commission_paid }}</div>
-            <div class="text-muted small">Commission Paid (5%)</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-num" style="color:#1e293b;">£{{ commission_paid }}</div>
+      <div class="stat-label">Commission Paid (5%)</div>
     </div>
+  </div>
 </div>
 
-<!-- ── Best Selling Products ── -->
+<!-- Best Sellers -->
 {% if best_sellers %}
-<h5 class="mb-3">
-    <i class="bi bi-bar-chart-fill text-success me-1"></i> Best Selling Products
-</h5>
-<div class="table-responsive mb-4">
-    <table class="table table-sm table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Product</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for bs in best_sellers %}
-            <tr>
-                <td>{{ bs.product__name }}</td>
-                <td>{{ bs.units_sold }}</td>
-                <td>£{{ bs.revenue }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="data-card">
+  <div class="data-card-header"><i class="bi bi-bar-chart-fill me-2"></i>Best Selling Products</div>
+  <table class="data-table">
+    <thead><tr><th>Product</th><th>Units Sold</th><th>Revenue</th></tr></thead>
+    <tbody>
+      {% for bs in best_sellers %}
+      <tr>
+        <td style="font-weight:600;color:var(--green-deep);">{{ bs.product__name }}</td>
+        <td style="color:#4a5568;">{{ bs.units_sold }}</td>
+        <td style="font-weight:700;color:var(--green-mid);">£{{ bs.revenue }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endif %}
 
-<!-- ── Incoming Orders ── -->
-<h5>Incoming Orders</h5>
+<!-- Incoming Orders -->
+<div class="section-title"><i class="bi bi-bag-check" style="color:var(--green-light);"></i>Incoming Orders</div>
 {% if pending_orders %}
-<div class="table-responsive mb-4">
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Order #</th>
-                <th>Customer</th>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Value</th>
-                <th>Delivery Date</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in pending_orders %}
-            <tr>
-                <td>#{{ item.order.pk }}</td>
-                <td>{{ item.order.customer.get_full_name|default:item.order.customer.username }}</td>
-                <td>{{ item.product.name }}</td>
-                <td>{{ item.quantity }} {{ item.product.get_unit_display }}</td>
-                <td>£{{ item.subtotal }}</td>
-                <td>{{ item.order.delivery_date|date:'d M Y' }}</td>
-                <td><span class="badge bg-warning text-dark">{{ item.get_producer_status_display }}</span></td>
-                <td><a href="{% url 'producer_orders' %}" class="btn btn-sm btn-outline-primary">Manage</a></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="data-card">
+  <table class="data-table">
+    <thead><tr><th>Order #</th><th>Customer</th><th>Product</th><th>Qty</th><th>Value</th><th>Delivery</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for item in pending_orders %}
+      <tr>
+        <td><strong style="color:var(--green-deep);">#{{ item.order.pk }}</strong></td>
+        <td style="color:#4a5568;">{{ item.order.customer.get_full_name|default:item.order.customer.username }}</td>
+        <td style="font-weight:600;">{{ item.product.name }}</td>
+        <td style="color:#718096;">{{ item.quantity }} {{ item.product.get_unit_display }}</td>
+        <td style="font-weight:700;color:var(--green-mid);">£{{ item.subtotal }}</td>
+        <td style="color:#718096;">{{ item.order.delivery_date|date:'d M Y' }}</td>
+        <td><span class="status-pill s-pending">{{ item.get_producer_status_display }}</span></td>
+        <td><a href="{% url 'producer_orders' %}" class="btn-manage">Manage</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% else %}
-<p class="text-muted">No pending orders.</p>
+<div class="data-card" style="padding:32px;text-align:center;">
+  <div style="font-size:2rem;margin-bottom:8px;">✅</div>
+  <div style="color:#718096;font-size:0.9rem;">No pending orders — all caught up!</div>
+</div>
 {% endif %}
 
-<!-- ── Your Products ── -->
-<h5>Your Products</h5>
+<!-- Products Grid -->
+<div class="section-title"><i class="bi bi-box-seam" style="color:var(--green-light);"></i>Your Products</div>
 <div class="row g-3">
-    {% for product in products|slice:":6" %}
-    <div class="col-md-4">
-        <div class="card p-3">
-            <div class="d-flex justify-content-between align-items-start">
-                <h6 class="mb-1">{{ product.name }}</h6>
-                <span class="badge {% if product.availability == 'available' or product.availability == 'in_season' %}bg-success{% else %}bg-secondary{% endif %}">
-                    {{ product.get_availability_display }}
-                </span>
-            </div>
-            <small class="text-muted">Stock: {{ product.stock_quantity }} {{ product.get_unit_display }}</small>
-            {% if product.stock_quantity <= 0 %}
-            <div class="alert alert-danger py-1 px-2 mt-2 small mb-0">
-                <i class="bi bi-x-circle"></i> Out of stock
-            </div>
-            {% elif product.stock_quantity <= product.low_stock_threshold %}
-            <div class="alert alert-warning py-1 px-2 mt-2 small mb-0">
-                <i class="bi bi-exclamation-triangle"></i> Low stock!
-            </div>
-            {% endif %}
-            <div class="mt-2">
-                <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-            </div>
+  {% for product in products|slice:":6" %}
+  <div class="col-md-4 col-sm-6">
+    <div class="product-mini">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div style="font-weight:700;color:var(--green-deep);font-size:0.95rem;">{{ product.name }}</div>
+        <span class="status-pill {% if product.availability == 'available' or product.availability == 'in_season' %}s-delivered{% else %}" style="background:#f1f5f9;color:#64748b;{% endif %}">
+          {{ product.get_availability_display }}
+        </span>
+      </div>
+      <div style="font-size:0.82rem;color:#718096;margin-bottom:12px;">
+        Stock: <strong style="color:#2d3748;">{{ product.stock_quantity }} {{ product.get_unit_display }}</strong>
+      </div>
+      {% if product.stock_quantity <= 0 %}
+        <div style="background:#fee2e2;color:#991b1b;border-radius:8px;padding:6px 10px;font-size:0.78rem;font-weight:600;margin-bottom:10px;">
+          <i class="bi bi-x-circle me-1"></i>Out of stock
         </div>
+      {% elif product.stock_quantity <= product.low_stock_threshold %}
+        <div style="background:#fef3c7;color:#92400e;border-radius:8px;padding:6px 10px;font-size:0.78rem;font-weight:600;margin-bottom:10px;">
+          <i class="bi bi-exclamation-triangle me-1"></i>Low stock
+        </div>
+      {% endif %}
+      <a href="{% url 'product_edit' product.pk %}" class="btn-edit-mini"><i class="bi bi-pencil me-1"></i>Edit</a>
     </div>
-    {% endfor %}
+  </div>
+  {% endfor %}
 </div>
 
 {% endblock %}

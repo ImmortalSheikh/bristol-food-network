@@ -2,286 +2,253 @@
 {% block title %}Admin Dashboard — Bristol Food Network{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2>Admin Dashboard</h2>
-        <p class="text-muted mb-0">Bristol Food Network Management</p>
-    </div>
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .stat-card { background:#fff;border-radius:18px;padding:24px 20px;border:2px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.04);text-align:center;transition:all 0.2s; }
+  .stat-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08); }
+  .stat-num { font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:4px; }
+  .stat-label { font-size:0.8rem;color:#718096;font-weight:500; }
+  .section-title { font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--green-deep);margin:28px 0 14px;display:flex;align-items:center;gap:8px; }
+  .data-card { background:#fff;border-radius:20px;border:1px solid #e8f0eb;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:24px; }
+  .data-table { width:100%;border-collapse:collapse; }
+  .data-table thead { background:var(--green-deep); }
+  .data-table thead th { padding:13px 18px;font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.75);border:none; }
+  .data-table tbody tr { border-bottom:1px solid #f0f4f1;transition:background 0.15s; }
+  .data-table tbody tr:last-child { border-bottom:none; }
+  .data-table tbody tr:hover { background:#fafcfa; }
+  .data-table td { padding:13px 18px;font-size:0.88rem;vertical-align:middle; }
+  .role-pill { border-radius:100px;padding:4px 12px;font-size:0.73rem;font-weight:700;display:inline-block; }
+  .role-admin    { background:#fee2e2;color:#991b1b; }
+  .role-producer { background:#dcfce7;color:#166534; }
+  .role-customer { background:#dbeafe;color:#1e40af; }
+  .status-pill { border-radius:100px;padding:4px 12px;font-size:0.73rem;font-weight:700;display:inline-block; }
+  .s-delivered { background:#dcfce7;color:#166534; }
+  .s-pending   { background:#fef3c7;color:#92400e; }
+  .s-cancelled { background:#fee2e2;color:#991b1b; }
+  .s-confirmed { background:#dbeafe;color:#1e40af; }
+  .active-pill { background:#dcfce7;color:#166534;border-radius:100px;padding:4px 12px;font-size:0.73rem;font-weight:700; }
+  .inactive-pill { background:#f1f5f9;color:#64748b;border-radius:100px;padding:4px 12px;font-size:0.73rem;font-weight:700; }
+  .btn-danger-sm { background:transparent;border:1.5px solid #fecaca;border-radius:8px;padding:5px 12px;color:#dc2626;font-size:0.8rem;cursor:pointer;transition:all 0.15s; }
+  .btn-danger-sm:hover { background:#fee2e2;border-color:#fca5a5; }
+  .btn-add-cat { background:var(--green-deep);color:white;border:none;border-radius:100px;padding:8px 20px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background 0.18s; }
+  .btn-add-cat:hover { background:var(--green-mid); }
+  .type-badge { border-radius:100px;padding:3px 10px;font-size:0.72rem;font-weight:700; }
+  .fin-card { background:#fff;border-radius:18px;padding:28px 24px;border-left:4px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+  .fin-num { font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;margin-bottom:4px; }
+  .fin-label { font-size:0.82rem;color:#718096; }
+</style>
+
+<div class="mb-4">
+  <h1 class="page-title mb-1">Admin Dashboard</h1>
+  <div style="color:#718096;font-size:0.9rem;">Bristol Food Network Management</div>
 </div>
 
 <!-- Stats -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-success">{{ total_users }}</div>
-            <div class="text-muted small">Total Users</div>
-        </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#bbf7d0;">
+      <div class="stat-num" style="color:#16a34a;">{{ total_users }}</div>
+      <div class="stat-label">Total Users</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-primary">{{ total_orders }}</div>
-            <div class="text-muted small">Total Orders</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#bfdbfe;">
+      <div class="stat-num" style="color:#2563eb;">{{ total_orders }}</div>
+      <div class="stat-label">Total Orders</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-warning">{{ total_products }}</div>
-            <div class="text-muted small">Total Products</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#fde68a;">
+      <div class="stat-num" style="color:#d97706;">{{ total_products }}</div>
+      <div class="stat-label">Total Products</div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center p-3">
-            <div class="fs-2 fw-bold text-info">{{ total_producers }}</div>
-            <div class="text-muted small">Producers</div>
-        </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="border-color:#a5f3fc;">
+      <div class="stat-num" style="color:#0891b2;">{{ total_producers }}</div>
+      <div class="stat-label">Producers</div>
     </div>
+  </div>
 </div>
 
-<!-- Financial Report (TC-025) -->
-<h5>Financial Overview</h5>
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-success">
-            <div class="fs-3 fw-bold text-success">£{{ total_revenue|floatformat:2 }}</div>
-            <div class="text-muted small">Total Order Revenue</div>
-        </div>
+<!-- Financial -->
+<div class="section-title"><i class="bi bi-cash-stack" style="color:var(--green-light);"></i>Financial Overview</div>
+<div class="row g-3 mb-2">
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#16a34a;">
+      <div class="fin-num" style="color:#16a34a;">£{{ total_revenue|floatformat:2 }}</div>
+      <div class="fin-label">Total Order Revenue</div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-warning">
-            <div class="fs-3 fw-bold text-warning">£{{ total_commission|floatformat:2 }}</div>
-            <div class="text-muted small">Network Commission (5%)</div>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#d97706;">
+      <div class="fin-num" style="color:#d97706;">£{{ total_commission|floatformat:2 }}</div>
+      <div class="fin-label">Network Commission (5%)</div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-primary">
-            <div class="fs-3 fw-bold text-primary">£{{ total_producer_payments|floatformat:2 }}</div>
-            <div class="text-muted small">Producer Payments (95%)</div>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#2563eb;">
+      <div class="fin-num" style="color:#2563eb;">£{{ total_producer_payments|floatformat:2 }}</div>
+      <div class="fin-label">Producer Payments (95%)</div>
     </div>
+  </div>
 </div>
 
-<!-- Recent Orders (TC-025) -->
-<h5>Recent Orders</h5>
-{% if recent_orders %}
-<div class="table-responsive mb-4">
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Order #</th>
-                <th>Type</th>
-                <th>Customer</th>
-                <th>Total</th>
-                <th>Commission (5%)</th>
-                <th>Producer Payment (95%)</th>
-                <th>Status</th>
-                <th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in recent_orders %}
-            <tr>
-                <td>#{{ order.pk }}</td>
-                <td>  
-                    {% if order.recurring_order_id %}
-                        <span class="badge bg-primary">🔄 Recurring</span>
-                    {% else %}
-                        <span class="badge bg-secondary">One-off</span>
-                    {% endif %}
-                </td>
-                <td>{{ order.customer.get_full_name|default:order.customer.username }}</td>
-                <td>£{{ order.total_amount }}</td>
-                <td>£{{ order.commission_amount }}</td>
-                <td>£{{ order.total_amount|add:order.commission_amount|floatformat:2 }}</td>
-                <td>
-                    <span class="badge
-                        {% if order.status == 'delivered' %}bg-success
-                        {% elif order.status == 'cancelled' %}bg-danger
-                        {% elif order.status == 'pending' %}bg-warning text-dark
-                        {% else %}bg-primary{% endif %}">
-                        {{ order.get_status_display }}
-                    </span>
-                </td>
-                <td>{{ order.created_at|date:'d M Y' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Recent Orders -->
+<div class="section-title"><i class="bi bi-bag-check" style="color:var(--green-light);"></i>Recent Orders</div>
+<div class="data-card">
+  {% if recent_orders %}
+  <table class="data-table">
+    <thead><tr><th>Order #</th><th>Type</th><th>Customer</th><th>Total</th><th>Commission (5%)</th><th>Producer Payment</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>
+      {% for order in recent_orders %}
+      <tr>
+        <td><strong style="color:var(--green-deep);">#{{ order.pk }}</strong></td>
+        <td>
+          {% if order.recurring_order_id %}
+            <span class="type-badge" style="background:#dbeafe;color:#1e40af;">🔄 Recurring</span>
+          {% else %}
+            <span class="type-badge" style="background:#f1f5f9;color:#64748b;">One-off</span>
+          {% endif %}
+        </td>
+        <td style="font-weight:600;">{{ order.customer.get_full_name|default:order.customer.username }}</td>
+        <td style="font-weight:700;color:var(--green-mid);">£{{ order.total_amount }}</td>
+        <td style="color:#718096;">£{{ order.commission_amount }}</td>
+        <td style="color:#4a5568;">£{{ order.total_amount|add:order.commission_amount|floatformat:2 }}</td>
+        <td><span class="status-pill s-{{ order.status }}">{{ order.get_status_display }}</span></td>
+        <td style="color:#718096;">{{ order.created_at|date:'d M Y' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:40px;color:#718096;">No orders yet.</div>
+  {% endif %}
 </div>
-{% else %}
-<p class="text-muted">No orders yet.</p>
-{% endif %}
 
-<!-- Low Stock Alerts (TC-023) -->
+<!-- Low Stock Alerts -->
 {% if low_stock_products %}
-<h5>⚠️ Low Stock Alerts</h5>
-<div class="table-responsive mb-4">
-    <table class="table table-hover table-warning">
-        <thead class="table-light">
-            <tr>
-                <th>Product</th><th>Producer</th><th>Stock</th><th>Threshold</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in low_stock_products %}
-            <tr>
-                <td>{{ product.name }}</td>
-                <td>{{ product.producer.business_name }}</td>
-                <td class="text-danger fw-bold">{{ product.stock_quantity }} {{ product.get_unit_display }}</td>
-                <td>{{ product.low_stock_threshold }} {{ product.get_unit_display }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
-
-<!-- Surplus Products (TC-019) -->
-{% if surplus_products %}
-<h5>Surplus Deals Active</h5>
-<div class="table-responsive mb-4">
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Product</th><th>Producer</th><th>Original Price</th><th>Discount</th><th>Discounted Price</th><th>Expires</th></tr>
-        </thead>
-        <tbody>
-            {% for product in surplus_products %}
-            <tr>
-                <td>{{ product.name }}</td>
-                <td>{{ product.producer.business_name }}</td>
-                <td>£{{ product.price }}</td>
-                <td>{{ product.surplus_discount_percent }}%</td>
-                <td>£{{ product.discounted_price }}</td>
-                <td>{{ product.surplus_expiry|date:'d M Y H:i'|default:'—' }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="section-title"><i class="bi bi-exclamation-triangle" style="color:#d97706;"></i>Low Stock Alerts</div>
+<div class="data-card">
+  <table class="data-table">
+    <thead><tr><th>Product</th><th>Producer</th><th>Stock</th><th>Threshold</th></tr></thead>
+    <tbody>
+      {% for product in low_stock_products %}
+      <tr>
+        <td style="font-weight:600;color:var(--green-deep);">{{ product.name }}</td>
+        <td style="color:#4a5568;">{{ product.producer.business_name }}</td>
+        <td><span style="color:#dc2626;font-weight:700;">{{ product.stock_quantity }} {{ product.get_unit_display }}</span></td>
+        <td style="color:#718096;">{{ product.low_stock_threshold }} {{ product.get_unit_display }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endif %}
 
 <!-- All Users -->
-<h5>All Users</h5>
-<div class="table-responsive mb-4">
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Active</th><th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for u in all_users %}
-            <tr>
-                <td>{{ u.username }}</td>
-                <td>{{ u.get_full_name|default:'—' }}</td>
-                <td>{{ u.email }}</td>
-                <td>
-                    <span class="badge
-                        {% if u.role == 'admin' %}bg-danger
-                        {% elif u.role == 'producer' %}bg-success
-                        {% else %}bg-primary{% endif %}">
-                        {{ u.get_role_display }}
-                    </span>
-                </td>
-                <td>{{ u.date_joined|date:'d M Y' }}</td>
-                <td>{% if u.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
-                <td>
-                    {% if u != request.user %}
-                    <a href="{% url 'admin_delete_user' u.pk %}"
-                       class="btn btn-sm btn-outline-danger"
-                       onclick="return confirm('Delete {{ u.username }}?')">
-                        <i class="bi bi-trash"></i>
-                    </a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="section-title"><i class="bi bi-people" style="color:var(--green-light);"></i>All Users</div>
+<div class="data-card">
+  <table class="data-table">
+    <thead><tr><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Active</th><th></th></tr></thead>
+    <tbody>
+      {% for u in all_users %}
+      <tr>
+        <td style="font-weight:600;color:var(--green-deep);">{{ u.username }}</td>
+        <td style="color:#4a5568;">{{ u.get_full_name|default:'—' }}</td>
+        <td style="color:#718096;font-size:0.85rem;">{{ u.email }}</td>
+        <td>
+          <span class="role-pill role-{{ u.role }}">{{ u.get_role_display }}</span>
+        </td>
+        <td style="color:#718096;">{{ u.date_joined|date:'d M Y' }}</td>
+        <td>{% if u.is_active %}<span class="active-pill">Active</span>{% else %}<span class="inactive-pill">Inactive</span>{% endif %}</td>
+        <td>
+          {% if u != request.user %}
+          <a href="{% url 'admin_delete_user' u.pk %}" class="btn-danger-sm" onclick="return confirm('Delete {{ u.username }}?')">
+            <i class="bi bi-trash3"></i>
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
-<!-- Products -->
-<h5>All Products</h5>
-<div class="table-responsive mb-4">
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Name</th><th>Producer</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in all_products %}
-            <tr>
-                <td>{{ product.name }}</td>
-                <td>{{ product.producer.business_name }}</td>
-                <td>{{ product.category.name }}</td>
-                <td>£{{ product.price }}</td>
-                <td>{{ product.stock_quantity }} {{ product.get_unit_display }}</td>
-                <td>
-                    <span class="badge {% if product.availability == 'available' or product.availability == 'in_season' %}bg-success{% else %}bg-secondary{% endif %}">
-                        {{ product.get_availability_display }}
-                    </span>
-                </td>
-                <td>
-                    <a href="{% url 'admin_delete_product' product.pk %}"
-                       class="btn btn-sm btn-outline-danger"
-                       onclick="return confirm('Delete {{ product.name }}?')">
-                        <i class="bi bi-trash"></i>
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- All Products -->
+<div class="section-title"><i class="bi bi-box-seam" style="color:var(--green-light);"></i>All Products</div>
+<div class="data-card">
+  <table class="data-table">
+    <thead><tr><th>Name</th><th>Producer</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for product in all_products %}
+      <tr>
+        <td style="font-weight:600;color:var(--green-deep);">{{ product.name }}</td>
+        <td style="color:#4a5568;">{{ product.producer.business_name }}</td>
+        <td style="color:#718096;">{{ product.category.name }}</td>
+        <td style="font-weight:700;color:var(--green-mid);">£{{ product.price }}</td>
+        <td style="color:#4a5568;">{{ product.stock_quantity }} {{ product.get_unit_display }}</td>
+        <td>
+          <span class="status-pill {% if product.availability == 'available' or product.availability == 'in_season' %}s-delivered{% else %}" style="background:#f1f5f9;color:#64748b;{% endif %}">
+            {{ product.get_availability_display }}
+          </span>
+        </td>
+        <td>
+          <a href="{% url 'admin_delete_product' product.pk %}" class="btn-danger-sm" onclick="return confirm('Delete {{ product.name }}?')">
+            <i class="bi bi-trash3"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
 <!-- Categories -->
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h5 class="mb-0">Categories</h5>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#addCategoryForm">
-        <i class="bi bi-plus-circle"></i> Add Category
-    </button>
+<div class="d-flex justify-content-between align-items-center mb-3" style="margin-top:28px;">
+  <div class="section-title mb-0"><i class="bi bi-tags" style="color:var(--green-light);"></i>Categories</div>
+  <button class="btn-add-cat" data-bs-toggle="collapse" data-bs-target="#addCategoryForm">
+    <i class="bi bi-plus-circle me-1"></i>Add Category
+  </button>
 </div>
 <div class="collapse mb-3" id="addCategoryForm">
-    <div class="card card-body">
-        <form method="post" action="{% url 'admin_add_category' %}">
-            {% csrf_token %}
-            <div class="row g-2">
-                <div class="col-md-5">
-                    <input type="text" name="name" class="form-control" placeholder="Category name" required>
-                </div>
-                <div class="col-md-5">
-                    <input type="text" name="slug" class="form-control" placeholder="slug-here" required>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Add</button>
-                </div>
-            </div>
-        </form>
-    </div>
+  <div class="data-card" style="padding:20px;">
+    <form method="post" action="{% url 'admin_add_category' %}">
+      {% csrf_token %}
+      <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+          <label class="form-label fw-semibold small">Category Name</label>
+          <input type="text" name="name" class="form-control" placeholder="e.g. Herbs" required>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label fw-semibold small">Slug</label>
+          <input type="text" name="slug" class="form-control" placeholder="e.g. herbs" required>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn-add-cat w-100">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
 </div>
-<div class="table-responsive mb-4">
-    <table class="table table-hover">
-        <thead class="table-light">
-            <tr><th>Name</th><th>Slug</th><th>Products</th><th></th></tr>
-        </thead>
-        <tbody>
-            {% for cat in all_categories %}
-            <tr>
-                <td>{{ cat.name }}</td>
-                <td><code>{{ cat.slug }}</code></td>
-                <td>{{ cat.products.count }}</td>
-                <td>
-                    <a href="{% url 'admin_delete_category' cat.pk %}"
-                       class="btn btn-sm btn-outline-danger"
-                       onclick="return confirm('Delete {{ cat.name }}?')">
-                        <i class="bi bi-trash"></i>
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="data-card">
+  <table class="data-table">
+    <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th></th></tr></thead>
+    <tbody>
+      {% for cat in all_categories %}
+      <tr>
+        <td style="font-weight:600;color:var(--green-deep);">{{ cat.name }}</td>
+        <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:0.83rem;color:#4a5568;">{{ cat.slug }}</code></td>
+        <td style="color:#718096;">{{ cat.products.count }}</td>
+        <td>
+          <a href="{% url 'admin_delete_category' cat.pk %}" class="btn-danger-sm" onclick="return confirm('Delete {{ cat.name }}?')">
+            <i class="bi bi-trash3"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 
 {% endblock %}
