@@ -1,118 +1,125 @@
 {% extends 'base.html' %}
-{% block title %}Review Moderation{% endblock %}
-
+{% block title %}Review Moderation — Bristol Food Network{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-  <h2 class="mb-4"><i class="bi bi-shield-check me-2 text-success"></i>Review Moderation</h2>
 
-  {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
-        {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    {% endfor %}
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .data-card { background:#fff;border-radius:20px;border:1px solid #e8f0eb;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:24px; }
+  .card-header-flagged { background:#dc2626;color:white;padding:16px 22px;display:flex;justify-content:space-between;align-items:center; }
+  .card-header-all { background:var(--green-deep);color:white;padding:16px 22px;display:flex;justify-content:space-between;align-items:center; }
+  .header-title { font-weight:700;font-size:1rem;display:flex;align-items:center;gap:8px; }
+  .count-badge { background:rgba(255,255,255,0.2);color:white;border-radius:100px;padding:3px 12px;font-size:0.8rem;font-weight:700; }
+  .data-table { width:100%;border-collapse:collapse; }
+  .data-table thead { background:#f8fafc; }
+  .data-table thead th { padding:11px 18px;font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#718096;border-bottom:1px solid #e8f0eb; }
+  .data-table tbody tr { border-bottom:1px solid #f0f4f1;transition:background 0.15s; }
+  .data-table tbody tr:last-child { border-bottom:none; }
+  .data-table tbody tr:hover { background:#fafcfa; }
+  .data-table tbody tr.flagged-row { background:#fff5f5; }
+  .data-table td { padding:14px 18px;font-size:0.88rem;vertical-align:middle; }
+  .product-name { font-weight:700;color:var(--green-deep); }
+  .customer-name { font-weight:600;color:#2d3748; }
+  .star { font-size:1rem; }
+  .review-title { color:#4a5568;font-size:0.88rem; }
+  .date-text { color:#718096;font-size:0.85rem; }
+  .status-active  { background:#dcfce7;color:#166534;border-radius:100px;padding:4px 12px;font-size:0.75rem;font-weight:700; }
+  .status-flagged { background:#fee2e2;color:#991b1b;border-radius:100px;padding:4px 12px;font-size:0.75rem;font-weight:700; }
+  .btn-approve { background:transparent;border:1.5px solid #86efac;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:600;color:#16a34a;cursor:pointer;transition:all 0.15s;margin-right:6px; }
+  .btn-approve:hover { background:#dcfce7; }
+  .btn-del { background:transparent;border:1.5px solid #fca5a5;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:600;color:#dc2626;cursor:pointer;transition:all 0.15s; }
+  .btn-del:hover { background:#fee2e2; }
+  .empty-state { text-align:center;padding:40px 20px; }
+</style>
+
+<h1 class="page-title mb-4">Review Moderation</h1>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 rounded-3">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- Flagged Reviews -->
+<div class="data-card">
+  <div class="card-header-flagged">
+    <div class="header-title"><i class="bi bi-flag-fill"></i>Flagged Reviews</div>
+    <span class="count-badge">{{ flagged_reviews.count }}</span>
+  </div>
+  {% if flagged_reviews %}
+  <table class="data-table">
+    <thead><tr><th>Product</th><th>Customer</th><th>Rating</th><th>Title</th><th>Date</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for review in flagged_reviews %}
+      <tr class="flagged-row">
+        <td><span class="product-name">{{ review.product.name }}</span></td>
+        <td><span class="customer-name">{{ review.display_name }}</span></td>
+        <td>
+          {% for i in "12345" %}
+            <span class="star" style="color:{% if forloop.counter <= review.rating %}#f59e0b{% else %}#e2e8f0{% endif %};">★</span>
+          {% endfor %}
+        </td>
+        <td class="review-title">{{ review.title }}</td>
+        <td class="date-text">{{ review.created_at|date:"d M Y" }}</td>
+        <td>
+          <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="review_pk" value="{{ review.pk }}">
+            <button name="action" value="unflag" class="btn-approve">✓ Approve</button>
+            <button name="action" value="delete" class="btn-del" onclick="return confirm('Delete this review?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-check-circle-fill fs-2 text-success"></i>
+    <p class="mt-2 text-muted">No flagged reviews. All clear!</p>
+  </div>
   {% endif %}
-
-  <!-- Flagged Reviews -->
-  <div class="card border-danger mb-4">
-    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="bi bi-flag-fill me-2"></i>Flagged Reviews</h5>
-      <span class="badge bg-white text-danger">{{ flagged_reviews.count }}</span>
-    </div>
-    <div class="card-body p-0">
-      {% if flagged_reviews %}
-        <div class="table-responsive">
-          <table class="table table-hover mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>Product</th><th>Customer</th><th>Rating</th>
-                <th>Title</th><th>Date</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for review in flagged_reviews %}
-              <tr>
-                <td>{{ review.product.name }}</td>
-                <td>{{ review.display_name }}</td>
-                <td>
-                  {% for i in "12345" %}
-                    <span style="color:{% if forloop.counter <= review.rating %}#f5a623{% else %}#ccc{% endif %};">★</span>
-                  {% endfor %}
-                </td>
-                <td>{{ review.title }}</td>
-                <td>{{ review.created_at|date:"d M Y" }}</td>
-                <td>
-                  <form method="post" class="d-inline">
-                    {% csrf_token %}
-                    <input type="hidden" name="review_pk" value="{{ review.pk }}">
-                    <button name="action" value="unflag" class="btn btn-sm btn-outline-success me-1">Approve</button>
-                    <button name="action" value="delete" class="btn btn-sm btn-danger"
-                            onclick="return confirm('Delete this review?')">Delete</button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <div class="p-4 text-center text-muted">
-          <i class="bi bi-check-circle fs-2 text-success"></i>
-          <p class="mt-2">No flagged reviews. All clear!</p>
-        </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- All Reviews -->
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="bi bi-star-fill me-2 text-warning"></i>All Reviews</h5>
-      <span class="badge bg-secondary">{{ all_reviews.count }}</span>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Product</th><th>Customer</th><th>Rating</th>
-              <th>Title</th><th>Date</th><th>Status</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for review in all_reviews %}
-            <tr {% if review.is_flagged %}class="table-warning"{% endif %}>
-              <td>{{ review.product.name }}</td>
-              <td>{{ review.display_name }}</td>
-              <td>
-                {% for i in "12345" %}
-                  <span style="color:{% if forloop.counter <= review.rating %}#f5a623{% else %}#ccc{% endif %};">★</span>
-                {% endfor %}
-              </td>
-              <td>{{ review.title|truncatechars:40 }}</td>
-              <td>{{ review.created_at|date:"d M Y" }}</td>
-              <td>
-                {% if review.is_flagged %}
-                  <span class="badge bg-danger">Flagged</span>
-                {% else %}
-                  <span class="badge bg-success">Active</span>
-                {% endif %}
-              </td>
-              <td>
-                <form method="post" class="d-inline">
-                  {% csrf_token %}
-                  <input type="hidden" name="review_pk" value="{{ review.pk }}">
-                  <button name="action" value="delete" class="btn btn-sm btn-outline-danger"
-                          onclick="return confirm('Delete this review?')">Delete</button>
-                </form>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
 </div>
+
+<!-- All Reviews -->
+<div class="data-card">
+  <div class="card-header-all">
+    <div class="header-title"><i class="bi bi-star-fill"></i>All Reviews</div>
+    <span class="count-badge">{{ all_reviews.count }}</span>
+  </div>
+  <table class="data-table">
+    <thead><tr><th>Product</th><th>Customer</th><th>Rating</th><th>Title</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for review in all_reviews %}
+      <tr {% if review.is_flagged %}class="flagged-row"{% endif %}>
+        <td><span class="product-name">{{ review.product.name }}</span></td>
+        <td><span class="customer-name">{{ review.display_name }}</span></td>
+        <td>
+          {% for i in "12345" %}
+            <span class="star" style="color:{% if forloop.counter <= review.rating %}#f59e0b{% else %}#e2e8f0{% endif %};">★</span>
+          {% endfor %}
+        </td>
+        <td class="review-title">{{ review.title|truncatechars:40 }}</td>
+        <td class="date-text">{{ review.created_at|date:"d M Y" }}</td>
+        <td>
+          {% if review.is_flagged %}
+            <span class="status-flagged">⚑ Flagged</span>
+          {% else %}
+            <span class="status-active">✓ Active</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="review_pk" value="{{ review.pk }}">
+            <button name="action" value="delete" class="btn-del" onclick="return confirm('Delete this review?')">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 {% endblock %}

@@ -1,150 +1,167 @@
 {% extends 'base.html' %}
-{% block title %}Commission Reports — Bristol Food Network Admin{% endblock %}
+{% block title %}Commission Reports — Bristol Food Network{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2>Network Commission Reports</h2>
-        <p class="text-muted mb-0">Financial overview for Bristol Food Network</p>
+
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .btn-export { background:var(--green-deep);color:white;border:none;border-radius:100px;padding:10px 24px;font-size:0.9rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s; }
+  .btn-export:hover { background:var(--green-mid);color:white;transform:translateY(-1px); }
+  .filter-card { background:#fff;border-radius:18px;border:1px solid #e8f0eb;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:24px; }
+  .form-label { font-weight:600;font-size:0.85rem;color:#2d3748;margin-bottom:6px; }
+  .form-control { border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 14px;font-size:0.9rem; }
+  .form-control:focus { border-color:var(--green-light);box-shadow:0 0 0 3px rgba(82,183,136,0.12); }
+  .btn-filter { background:var(--green-deep);color:white;border:none;border-radius:12px;padding:11px 28px;font-weight:600;font-size:0.9rem;transition:background 0.18s; }
+  .btn-filter:hover { background:var(--green-mid); }
+  .btn-clear { background:transparent;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 20px;font-weight:500;font-size:0.9rem;color:#4a5568;text-decoration:none;display:inline-block;transition:all 0.18s; }
+  .btn-clear:hover { border-color:var(--green-light);color:var(--green-deep); }
+  .fin-card { background:#fff;border-radius:18px;padding:28px 24px;border-left:4px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.04);text-align:center; }
+  .fin-label { font-size:0.82rem;color:#718096;margin-bottom:8px; }
+  .fin-num { font-family:'Playfair Display',serif;font-size:2rem;font-weight:700; }
+  .data-card { background:#fff;border-radius:20px;border:1px solid #e8f0eb;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:24px; }
+  .data-table { width:100%;border-collapse:collapse; }
+  .data-table thead { background:var(--green-deep); }
+  .data-table thead th { padding:14px 18px;font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.75);border:none; }
+  .data-table tbody tr { border-bottom:1px solid #f0f4f1;transition:background 0.15s; }
+  .data-table tbody tr:hover { background:#fafcfa; }
+  .data-table td { padding:14px 18px;font-size:0.9rem;vertical-align:middle; }
+  .data-table tfoot td { padding:14px 18px;font-size:0.9rem;background:#f8fafc;font-weight:700;border-top:2px solid #e8f0eb; }
+  .status-pill { border-radius:100px;padding:4px 12px;font-size:0.75rem;font-weight:700;display:inline-block; }
+  .s-delivered { background:#dcfce7;color:#166534; }
+  .s-confirmed { background:#dbeafe;color:#1e40af; }
+  .s-ready     { background:#e0f2fe;color:#0369a1; }
+  .s-pending   { background:#fef3c7;color:#92400e; }
+  .btn-breakdown { background:transparent;border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:600;color:#4a5568;cursor:pointer;transition:all 0.15s; }
+  .btn-breakdown:hover { border-color:var(--green-light);color:var(--green-deep);background:var(--green-pale); }
+  .breakdown-row td { background:#f8fafc;padding:0!important; }
+  .breakdown-inner { padding:0; }
+  .breakdown-table { width:100%;border-collapse:collapse; }
+  .breakdown-table th { padding:10px 24px;font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#718096;background:#f1f5f9;border-bottom:1px solid #e8f0eb; }
+  .breakdown-table td { padding:10px 24px;font-size:0.88rem;border-bottom:1px solid #f0f4f1; }
+  .breakdown-table tr:last-child td { border-bottom:none; }
+  .policy-note { background:var(--green-pale);border-radius:14px;padding:16px 20px;font-size:0.85rem;color:var(--green-deep);margin-top:20px;border-left:4px solid var(--green-light); }
+</style>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="page-title mb-1">Network Commission Reports</h1>
+    <div style="color:#718096;font-size:0.9rem;">Financial overview for Bristol Food Network</div>
+  </div>
+  <a href="{% url 'admin_commission_csv' %}{% if date_from %}?date_from={{ date_from }}&date_to={{ date_to }}{% endif %}" class="btn-export">
+    <i class="bi bi-download"></i> Export CSV
+  </a>
+</div>
+
+<!-- Filter -->
+<div class="filter-card">
+  <form method="get" class="row g-3 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label">From Date</label>
+      <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
     </div>
-    <a href="{% url 'admin_commission_csv' %}{% if date_from %}?date_from={{ date_from }}&date_to={{ date_to }}{% endif %}"
-       class="btn btn-success">
-        <i class="bi bi-download"></i> Export CSV
-    </a>
+    <div class="col-md-4">
+      <label class="form-label">To Date</label>
+      <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+      <button type="submit" class="btn-filter">Filter</button>
+      <a href="{% url 'admin_commission_report' %}" class="btn-clear">Clear</a>
+    </div>
+  </form>
 </div>
 
-<!-- Date Filter -->
-<div class="card mb-4 p-3">
-    <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <label class="form-label fw-semibold">From Date</label>
-            <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
-        </div>
-        <div class="col-md-4">
-            <label class="form-label fw-semibold">To Date</label>
-            <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">Filter</button>
-        </div>
-        <div class="col-md-2">
-            <a href="{% url 'admin_commission_report' %}" class="btn btn-outline-secondary w-100">Clear</a>
-        </div>
-    </form>
-</div>
-
-<!-- Summary Totals -->
+<!-- Totals -->
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-success">
-            <div class="text-muted small mb-1">Total Order Value</div>
-            <div class="fs-3 fw-bold text-success">£{{ total_gross }}</div>
-        </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#16a34a;">
+      <div class="fin-label">Total Order Value</div>
+      <div class="fin-num" style="color:#16a34a;">£{{ total_gross }}</div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-warning">
-            <div class="text-muted small mb-1">Network Commission (5%)</div>
-            <div class="fs-3 fw-bold text-warning">£{{ total_commission }}</div>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#d97706;">
+      <div class="fin-label">Network Commission (5%)</div>
+      <div class="fin-num" style="color:#d97706;">£{{ total_commission }}</div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-primary">
-            <div class="text-muted small mb-1">Total Producer Payments (95%)</div>
-            <div class="fs-3 fw-bold text-primary">£{{ total_net }}</div>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#2563eb;">
+      <div class="fin-label">Total Producer Payments (95%)</div>
+      <div class="fin-num" style="color:#2563eb;">£{{ total_net }}</div>
     </div>
+  </div>
 </div>
 
-<!-- Order Breakdown -->
+<!-- Orders Table -->
 {% if report_orders %}
-<div class="table-responsive">
-    <table class="table table-hover">
-        <thead class="table-dark">
-            <tr>
-                <th>Order #</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Order Total</th>
-                <th>Commission (5%)</th>
-                <th>Producer Payment (95%)</th>
-                <th>Status</th>
-                <th>Details</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in report_orders %}
-            <tr>
-                <td><strong>#{{ row.order.pk }}</strong></td>
-                <td>{{ row.order.created_at|date:'d M Y' }}</td>
-                <td>{{ row.order.customer.get_full_name|default:row.order.customer.username }}</td>
-                <td>£{{ row.order.total_amount }}</td>
-                <td class="text-warning fw-semibold">£{{ row.commission }}</td>
-                <td class="text-success fw-semibold">£{{ row.net }}</td>
-                <td>
-                    <span class="badge
-                        {% if row.order.status == 'delivered' %}bg-success
-                        {% elif row.order.status == 'ready' %}bg-info
-                        {% else %}bg-primary{% endif %}">
-                        {{ row.order.get_status_display }}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-outline-secondary"
-                            data-bs-toggle="collapse"
-                            data-bs-target="#breakdown{{ row.order.pk }}">
-                        Breakdown
-                    </button>
-                </td>
-            </tr>
-            <!-- Per-producer breakdown row -->
-            <tr class="collapse" id="breakdown{{ row.order.pk }}">
-                <td colspan="8" class="bg-light p-0">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr class="table-secondary">
-                                <th class="ps-4">Producer</th>
-                                <th>Item Total</th>
-                                <th>Commission (5%)</th>
-                                <th>Producer Payment (95%)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for pb in row.producer_breakdown %}
-                            <tr>
-                                <td class="ps-4">{{ pb.producer }}</td>
-                                <td>£{{ pb.subtotal }}</td>
-                                <td class="text-warning">£{{ pb.commission }}</td>
-                                <td class="text-success">£{{ pb.net }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot class="table-dark">
-            <tr>
-                <td colspan="3"><strong>Totals</strong></td>
-                <td><strong>£{{ total_gross }}</strong></td>
-                <td class="text-warning"><strong>£{{ total_commission }}</strong></td>
-                <td class="text-success"><strong>£{{ total_net }}</strong></td>
-                <td colspan="2"></td>
-            </tr>
-        </tfoot>
-    </table>
+<div class="data-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Order #</th><th>Date</th><th>Customer</th>
+        <th>Order Total</th><th>Commission (5%)</th>
+        <th>Producer Payment (95%)</th><th>Status</th><th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in report_orders %}
+      <tr>
+        <td><strong style="color:var(--green-deep);">#{{ row.order.pk }}</strong></td>
+        <td style="color:#718096;">{{ row.order.created_at|date:'d M Y' }}</td>
+        <td style="font-weight:600;">{{ row.order.customer.get_full_name|default:row.order.customer.username }}</td>
+        <td style="font-weight:700;color:var(--green-deep);">£{{ row.order.total_amount }}</td>
+        <td style="font-weight:600;color:#d97706;">£{{ row.commission }}</td>
+        <td style="font-weight:600;color:#16a34a;">£{{ row.net }}</td>
+        <td><span class="status-pill s-{{ row.order.status }}">{{ row.order.get_status_display }}</span></td>
+        <td>
+          <button class="btn-breakdown" data-bs-toggle="collapse" data-bs-target="#breakdown{{ row.order.pk }}">
+            <i class="bi bi-chevron-down me-1"></i>Breakdown
+          </button>
+        </td>
+      </tr>
+      <tr class="breakdown-row collapse" id="breakdown{{ row.order.pk }}">
+        <td colspan="8" class="breakdown-inner">
+          <table class="breakdown-table">
+            <thead>
+              <tr><th>Producer</th><th>Item Total</th><th>Commission (5%)</th><th>Producer Payment (95%)</th></tr>
+            </thead>
+            <tbody>
+              {% for pb in row.producer_breakdown %}
+              <tr>
+                <td style="font-weight:600;color:var(--green-deep);">{{ pb.producer }}</td>
+                <td>£{{ pb.subtotal }}</td>
+                <td style="color:#d97706;font-weight:600;">£{{ pb.commission }}</td>
+                <td style="color:#16a34a;font-weight:600;">£{{ pb.net }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3" style="color:var(--green-deep);">Totals</td>
+        <td style="color:var(--green-deep);">£{{ total_gross }}</td>
+        <td style="color:#d97706;">£{{ total_commission }}</td>
+        <td style="color:#16a34a;">£{{ total_net }}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
 </div>
 {% else %}
-<div class="text-center py-5">
-    <div class="fs-1 mb-3">📊</div>
-    <h4>No orders found</h4>
-    <p class="text-muted">Try adjusting the date range filter.</p>
+<div class="data-card" style="text-align:center;padding:60px;">
+  <div style="font-size:3rem;margin-bottom:16px;">📊</div>
+  <h5 style="color:var(--green-deep);">No orders found</h5>
+  <p class="text-muted">Try adjusting the date range filter.</p>
 </div>
 {% endif %}
 
-<div class="alert alert-info mt-3">
-    <i class="bi bi-info-circle"></i>
-    <strong>Commission Policy:</strong> The Bristol Food Network retains 5% of all order values.
-    Producers receive 95% of their individual item totals. For multi-vendor orders, commission
-    is calculated on the total order value ({{ "5%" }}) and each producer receives 95% of their portion.
+<div class="policy-note">
+  <i class="bi bi-info-circle me-2"></i>
+  <strong>Commission Policy:</strong> The Bristol Food Network retains 5% of all order values.
+  Producers receive 95% of their individual item totals.
 </div>
+
 {% endblock %}

@@ -1,111 +1,139 @@
 {% extends 'base.html' %}
 {% block title %}Payment Reports — Bristol Food Network{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2>Payment Reports</h2>
-        <p class="text-muted mb-0">{{ profile.business_name }}</p>
-    </div>
-    <a href="{% url 'producer_payments_csv' %}" class="btn btn-success">
-        <i class="bi bi-download"></i> Download CSV Report
-    </a>
+
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .page-sub { color:#718096; font-size:0.9rem; }
+  .btn-csv { background:var(--green-deep);color:white;border:none;border-radius:100px;padding:10px 24px;font-size:0.9rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s; }
+  .btn-csv:hover { background:var(--green-mid);color:white;transform:translateY(-1px);box-shadow:0 4px 16px rgba(45,106,79,0.25); }
+  .fin-card { background:#fff;border-radius:18px;padding:28px 24px;border-left:4px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.04);text-align:center; }
+  .fin-label { font-size:0.82rem;color:#718096;margin-bottom:8px; }
+  .fin-num { font-family:'Playfair Display',serif;font-size:2rem;font-weight:700; }
+  .week-card { background:#fff;border-radius:20px;border:1px solid #e8f0eb;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:20px; }
+  .week-header { background:#f8fafc;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e8f0eb; }
+  .week-title { font-weight:700;color:var(--green-deep);font-size:0.95rem; }
+  .week-badges { display:flex;gap:8px; }
+  .week-badge { border-radius:100px;padding:4px 12px;font-size:0.78rem;font-weight:700; }
+  .badge-gross  { background:#dcfce7;color:#166534; }
+  .badge-comm   { background:#fef3c7;color:#92400e; }
+  .badge-net    { background:#dbeafe;color:#1e40af; }
+  .data-table { width:100%;border-collapse:collapse; }
+  .data-table thead { background:var(--green-deep); }
+  .data-table thead th { padding:12px 18px;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.75);border:none; }
+  .data-table tbody tr { border-bottom:1px solid #f0f4f1;transition:background 0.15s; }
+  .data-table tbody tr:hover { background:#fafcfa; }
+  .data-table td { padding:13px 18px;font-size:0.88rem;vertical-align:middle; }
+  .data-table tfoot td { padding:13px 18px;background:#f8fafc;font-weight:700;border-top:2px solid #e8f0eb;font-size:0.9rem; }
+  .status-delivered { background:#dcfce7;color:#166534;border-radius:100px;padding:4px 12px;font-size:0.75rem;font-weight:700; }
+  .status-transfer  { background:#e0f2fe;color:#0369a1;border-radius:100px;padding:4px 12px;font-size:0.75rem;font-weight:700; }
+  .policy-note { background:var(--green-pale);border-radius:14px;padding:16px 20px;font-size:0.85rem;color:var(--green-deep);margin-top:20px;border-left:4px solid var(--green-light); }
+  .empty-state { text-align:center;padding:60px 20px; }
+</style>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="page-title mb-1">Payment Reports</h1>
+    <div class="page-sub"><i class="bi bi-shop me-1"></i>{{ profile.business_name }}</div>
+  </div>
+  <a href="{% url 'producer_payments_csv' %}" class="btn-csv">
+    <i class="bi bi-download"></i> Download CSV Report
+  </a>
 </div>
 
-<!-- Overall Summary -->
+<!-- Summary Totals -->
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-success">
-            <div class="text-muted small mb-1">Total Gross Sales</div>
-            <div class="fs-3 fw-bold text-success">£{{ total_gross }}</div>
-        </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#16a34a;">
+      <div class="fin-label">Total Gross Sales</div>
+      <div class="fin-num" style="color:#16a34a;">£{{ total_gross }}</div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-warning">
-            <div class="text-muted small mb-1">Network Commission (5%)</div>
-            <div class="fs-3 fw-bold text-warning">£{{ total_commission }}</div>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#d97706;">
+      <div class="fin-label">Network Commission (5%)</div>
+      <div class="fin-num" style="color:#d97706;">£{{ total_commission }}</div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center p-3 border-primary">
-            <div class="text-muted small mb-1">Your Total Payment (95%)</div>
-            <div class="fs-3 fw-bold text-primary">£{{ total_net }}</div>
-        </div>
+  </div>
+  <div class="col-md-4">
+    <div class="fin-card" style="border-left-color:#2563eb;">
+      <div class="fin-label">Your Total Payment (95%)</div>
+      <div class="fin-num" style="color:#2563eb;">£{{ total_net }}</div>
     </div>
+  </div>
 </div>
 
 <!-- Weekly Breakdown -->
 {% if weekly_summaries %}
-{% for week in weekly_summaries %}
-<div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>Week: {{ week.week_start|date:'d M Y' }} — {{ week.week_end|date:'d M Y' }}</strong>
-        <div>
-            <span class="badge bg-success me-2">Gross: £{{ week.gross }}</span>
-            <span class="badge bg-warning text-dark me-2">Commission: £{{ week.commission }}</span>
-            <span class="badge bg-primary">Net: £{{ week.net }}</span>
-        </div>
+  {% for week in weekly_summaries %}
+  <div class="week-card">
+    <div class="week-header">
+      <div class="week-title">
+        <i class="bi bi-calendar3 me-2" style="color:var(--green-light);"></i>
+        Week: {{ week.week_start|date:'d M Y' }} — {{ week.week_end|date:'d M Y' }}
+      </div>
+      <div class="week-badges">
+        <span class="week-badge badge-gross">Gross: £{{ week.gross }}</span>
+        <span class="week-badge badge-comm">Commission: £{{ week.commission }}</span>
+        <span class="week-badge badge-net">Net: £{{ week.net }}</span>
+      </div>
     </div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Order #</th>
-                    <th>Order Date</th>
-                    <th>Delivery Date</th>
-                    <th>Product</th>
-                    <th>Qty</th>
-                    <th>Gross</th>
-                    <th>Commission (5%)</th>
-                    <th>Your Payment (95%)</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in week.items %}
-                <tr>
-                    <td>#{{ item.order.pk }}</td>
-                    <td>{{ item.order.created_at|date:'d M Y' }}</td>
-                    <td>{{ item.order.delivery_date|date:'d M Y' }}</td>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>£{{ item.subtotal }}</td>
-                    <td class="text-warning">£{{ item.subtotal|floatformat:2 }}</td>
-                    <td class="text-success fw-semibold">
-                        £{% widthratio item.subtotal 100 95 %}
-                    </td>
-                    <td>
-                        <span class="badge bg-success">Delivered</span>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="table-light">
-                <tr>
-                    <td colspan="5" class="text-end fw-bold">Week Total:</td>
-                    <td><strong>£{{ week.gross }}</strong></td>
-                    <td class="text-warning"><strong>£{{ week.commission }}</strong></td>
-                    <td class="text-primary"><strong>£{{ week.net }}</strong></td>
-                    <td>
-                        <span class="badge bg-info">Pending Transfer</span>
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-</div>
-{% endfor %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Order Date</th>
+          <th>Delivery Date</th>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Gross</th>
+          <th>Commission (5%)</th>
+          <th>Your Payment (95%)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in week.items %}
+        <tr>
+          <td><strong style="color:var(--green-deep);">#{{ item.order.pk }}</strong></td>
+          <td style="color:#718096;">{{ item.order.created_at|date:'d M Y' }}</td>
+          <td style="color:#718096;">{{ item.order.delivery_date|date:'d M Y' }}</td>
+          <td style="font-weight:600;">{{ item.product.name }}</td>
+          <td style="color:#718096;">{{ item.quantity }}</td>
+          <td style="font-weight:700;color:var(--green-deep);">£{{ item.subtotal }}</td>
+          <td style="color:#d97706;font-weight:600;">£{{ item.subtotal|floatformat:2 }}</td>
+          <td style="color:#16a34a;font-weight:700;">£{% widthratio item.subtotal 100 95 %}</td>
+          <td><span class="status-delivered">Delivered</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right;color:#4a5568;">Week Total:</td>
+          <td style="color:var(--green-deep);">£{{ week.gross }}</td>
+          <td style="color:#d97706;">£{{ week.commission }}</td>
+          <td style="color:#2563eb;">£{{ week.net }}</td>
+          <td><span class="status-transfer">Pending Transfer</span></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endfor %}
 
 {% else %}
-<div class="text-center py-5">
-    <div class="fs-1 mb-3">💰</div>
-    <h4>No completed orders yet</h4>
-    <p class="text-muted">Payment summaries will appear here once orders are marked as delivered.</p>
+<div class="week-card">
+  <div class="empty-state">
+    <div style="font-size:3rem;margin-bottom:16px;">💰</div>
+    <h5 style="color:var(--green-deep);">No completed orders yet</h5>
+    <p class="text-muted">Payment summaries will appear once orders are marked as delivered.</p>
+  </div>
 </div>
 {% endif %}
 
-<div class="alert alert-info mt-3">
-    <i class="bi bi-info-circle"></i>
-    <strong>Payment Schedule:</strong> Payments are processed weekly every Monday for the previous week's delivered orders.
-    The network retains a 5% commission on all sales. Your payment is 95% of each order's value.
+<div class="policy-note">
+  <i class="bi bi-info-circle me-2"></i>
+  <strong>Payment Schedule:</strong> Payments are processed weekly every Monday for the previous week's delivered orders.
+  The network retains a 5% commission on all sales. Your payment is 95% of each order's value.
 </div>
+
 {% endblock %}
