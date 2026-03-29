@@ -1,13 +1,49 @@
 {% extends 'base.html' %}
 {% block title %}My Orders — Bristol Food Network{% endblock %}
-
 {% block content %}
-<h2 class="mb-4">My Orders</h2>
 
-<!-- Filters -->
-<form method="get" class="row g-2 mb-4 align-items-end">
-  <div class="col-auto">
-    <select name="status" class="form-select">
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .filter-bar { background:#fff; border-radius:16px; padding:16px 20px; border:1px solid #e8f0eb; margin-bottom:24px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+  .filter-bar .form-select, .filter-bar .form-control { border:1.5px solid #e2e8f0; border-radius:10px; font-size:0.88rem; padding:8px 12px; }
+  .filter-bar .form-select:focus, .filter-bar .form-control:focus { border-color:var(--green-light); box-shadow:0 0 0 3px rgba(82,183,136,0.12); }
+  .btn-filter { background:var(--green-deep); color:white; border:none; border-radius:10px; padding:8px 20px; font-size:0.88rem; font-weight:600; transition:background 0.18s; }
+  .btn-filter:hover { background:var(--green-mid); }
+  .order-card { background:#fff; border-radius:20px; border:1px solid #e8f0eb; overflow:hidden; margin-bottom:20px; box-shadow:0 2px 12px rgba(0,0,0,0.04); transition:box-shadow 0.2s; }
+  .order-card:hover { box-shadow:0 6px 24px rgba(0,0,0,0.08); }
+  .order-header { padding:16px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f0f4f1; }
+  .order-num { font-weight:700; color:var(--green-deep); font-size:1rem; }
+  .order-date { font-size:0.82rem; color:#718096; margin-left:10px; }
+  .order-total { font-family:'Playfair Display',serif; font-weight:700; color:var(--green-mid); font-size:1.1rem; }
+  .status-badge { border-radius:100px; padding:5px 14px; font-size:0.78rem; font-weight:700; letter-spacing:0.02em; }
+  .status-delivered { background:#dcfce7; color:#166534; }
+  .status-pending   { background:#fef3c7; color:#92400e; }
+  .status-confirmed { background:#dbeafe; color:#1e40af; }
+  .status-ready     { background:#e0f2fe; color:#0369a1; }
+  .status-cancelled { background:#fee2e2; color:#991b1b; }
+  .order-items table { width:100%; }
+  .order-items td { padding:14px 24px; border-bottom:1px solid #f8fafc; font-size:0.9rem; vertical-align:middle; }
+  .order-items tr:last-child td { border-bottom:none; }
+  .item-name { font-weight:600; color:var(--green-deep); }
+  .item-producer { font-size:0.8rem; color:#718096; }
+  .btn-write-review { background:var(--green-mid); color:white; border:none; border-radius:100px; padding:6px 16px; font-size:0.8rem; font-weight:600; text-decoration:none; transition:all 0.18s; display:inline-flex; align-items:center; gap:5px; }
+  .btn-write-review:hover { background:var(--green-deep); color:white; transform:scale(1.03); }
+  .btn-edit-review { background:transparent; border:1.5px solid #f59e0b; color:#d97706; border-radius:100px; padding:6px 16px; font-size:0.8rem; font-weight:600; text-decoration:none; transition:all 0.18s; display:inline-flex; align-items:center; gap:5px; }
+  .btn-edit-review:hover { background:#fef3c7; color:#92400e; }
+  .order-footer { padding:12px 24px; background:#fafafa; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:#718096; border-top:1px solid #f0f4f1; }
+  .empty-state { text-align:center; padding:80px 20px; }
+</style>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="page-title mb-0">My Orders</h1>
+  <a href="{% url 'marketplace' %}" class="btn-write-review" style="background:var(--green-deep);">
+    <i class="bi bi-shop"></i> Shop More
+  </a>
+</div>
+
+<div class="filter-bar">
+  <form method="get" class="d-flex gap-3 align-items-center flex-wrap">
+    <select name="status" class="form-select" style="width:auto;">
       <option value="">All Statuses</option>
       <option value="pending"   {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
       <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
@@ -15,96 +51,71 @@
       <option value="delivered" {% if status_filter == 'delivered' %}selected{% endif %}>Delivered</option>
       <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
     </select>
-  </div>
-  <div class="col-auto">
-    <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
-  </div>
-  <div class="col-auto">
-    <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
-  </div>
-  <div class="col-auto">
-    <button type="submit" class="btn btn-outline-success">Filter</button>
-  </div>
-</form>
+    <input type="date" name="date_from" class="form-control" style="width:auto;" value="{{ date_from }}">
+    <input type="date" name="date_to" class="form-control" style="width:auto;" value="{{ date_to }}">
+    <button type="submit" class="btn-filter"><i class="bi bi-funnel me-1"></i>Filter</button>
+    {% if status_filter or date_from or date_to %}
+    <a href="{% url 'customer_orders' %}" class="text-muted small text-decoration-none">Clear</a>
+    {% endif %}
+  </form>
+</div>
 
-<p class="text-muted">Showing {{ orders.count }} order{{ orders.count|pluralize }}</p>
+<p class="text-muted small mb-3">Showing {{ orders.count }} order{{ orders.count|pluralize }}</p>
 
 {% for order in orders %}
-<div class="card mb-4 shadow-sm border-0">
-  <!-- Order Header -->
-  <div class="card-header bg-white d-flex justify-content-between align-items-center">
+<div class="order-card">
+  <div class="order-header">
     <div>
-      <strong>Order #{{ order.pk }}</strong>
-      <span class="text-muted ms-2">{{ order.created_at|date:"d M Y" }}</span>
+      <span class="order-num">Order #{{ order.pk }}</span>
+      <span class="order-date">{{ order.created_at|date:"d M Y" }}</span>
     </div>
     <div class="d-flex align-items-center gap-3">
-      <span class="fw-bold text-success">£{{ order.total_amount }}</span>
-      <span class="badge
-        {% if order.status == 'delivered' %}bg-success
-        {% elif order.status == 'ready' %}bg-info
-        {% elif order.status == 'confirmed' %}bg-primary
-        {% elif order.status == 'cancelled' %}bg-danger
-        {% else %}bg-warning text-dark{% endif %}">
-        {{ order.get_status_display }}
-      </span>
+      <span class="order-total">£{{ order.total_amount }}</span>
+      <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
     </div>
   </div>
 
-  <!-- Order Items -->
-  <div class="card-body p-3">
-    {% for item in order.items.all %}
-    <div class="mb-2">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <strong>{{ item.product.name }}</strong>
-          × {{ item.quantity }}
-          <span class="badge
-            {% if item.producer_status == 'delivered' %}bg-success
-            {% elif item.producer_status == 'ready' %}bg-info
-            {% elif item.producer_status == 'confirmed' %}bg-primary
-            {% else %}bg-warning text-dark{% endif %} ms-1">
-            {{ item.get_producer_status_display }}
-          </span>
-        </div>
-        <div class="d-flex align-items-center gap-3">
-          <span class="text-muted">{{ item.producer.business_name }}</span>
-          <span>£{{ item.subtotal }}</span>
+  <div class="order-items">
+    <table>
+      {% for item in order.items.all %}
+      <tr>
+        <td style="width:35%;">
+          <div class="item-name">{{ item.product.name }}</div>
+          <div class="item-producer">{{ item.producer.business_name }}</div>
+        </td>
+        <td style="color:#718096;">× {{ item.quantity }} {{ item.product.get_unit_display }}</td>
+        <td><strong style="color:var(--green-deep);">£{{ item.subtotal }}</strong></td>
+        <td style="text-align:right;">
           {% if order.status == 'delivered' %}
             {% if item.product.pk in reviewed_products %}
-              <a href="{% url 'submit_review' product_pk=item.product.pk %}"
-                 class="btn btn-sm btn-outline-warning">
-                <i class="bi bi-pencil me-1"></i>Edit Review
+              <a href="{% url 'submit_review' product_pk=item.product.pk %}" class="btn-edit-review">
+                <i class="bi bi-pencil"></i> Edit Review
               </a>
             {% else %}
-              <a href="{% url 'submit_review' product_pk=item.product.pk %}"
-                 class="btn btn-sm btn-success">
-                <i class="bi bi-star-fill me-1"></i>Write Review
+              <a href="{% url 'submit_review' product_pk=item.product.pk %}" class="btn-write-review">
+                <i class="bi bi-star-fill"></i> Write Review
               </a>
             {% endif %}
+          {% else %}
+            <span class="status-badge status-{{ item.producer_status }}" style="font-size:0.75rem;">{{ item.get_producer_status_display }}</span>
           {% endif %}
-        </div>
-      </div>
-      {% if item.producer_notes %}
-      <div class="mt-1 ps-2" style="border-left: 3px solid #0d6efd;">
-        <span class="small"><strong>{{ item.producer.business_name }}:</strong> {{ item.producer_notes }}</span>
-      </div>
-      {% endif %}
-    </div>
-    {% if not forloop.last %}<hr class="my-2">{% endif %}
-    {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
   </div>
 
-  <!-- Order Footer -->
-  <div class="card-footer bg-white text-muted small d-flex justify-content-between">
-    <span><i class="bi bi-calendar me-1"></i>Delivery: {{ order.delivery_date|date:"d M Y" }}</span>
+  <div class="order-footer">
+    <span><i class="bi bi-calendar3 me-1"></i>Delivery: {{ order.delivery_date|date:"d M Y" }}</span>
     <span><i class="bi bi-geo-alt me-1"></i>{{ order.delivery_postcode }}</span>
   </div>
 </div>
 {% empty %}
-<div class="text-center text-muted py-5">
-  <i class="bi bi-bag-x fs-1"></i>
-  <p class="mt-3">You have no orders yet.</p>
-  <a href="{% url 'marketplace' %}" class="btn btn-success mt-2">Browse Marketplace</a>
+<div class="empty-state">
+  <div style="font-size:3.5rem;margin-bottom:16px;">📦</div>
+  <h4 style="color:var(--green-deep);">No orders yet</h4>
+  <p class="text-muted mb-4">Start shopping from local Bristol producers</p>
+  <a href="{% url 'marketplace' %}" class="btn-write-review" style="background:var(--green-deep);padding:12px 32px;border-radius:100px;font-size:0.95rem;">Browse Marketplace</a>
 </div>
 {% endfor %}
 

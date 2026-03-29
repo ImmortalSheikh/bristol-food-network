@@ -187,17 +187,19 @@ def logout_view(request):
 # ─────────────────────────────────────────────────────────────
 
 def home(request):
-    categories = Category.objects.all()
-    featured = Product.objects.filter(
-        availability__in=['available', 'in_season'],
-        stock_quantity__gt=0
-    ).select_related('producer', 'category').order_by('-created_at')[:8]
+    categories       = Category.objects.all()
+    featured_products = Product.objects.filter(
+        availability__in=['available', 'in_season']
+    ).select_related('producer', 'category').order_by('?')[:8]
+    total_products   = Product.objects.filter(
+        availability__in=['available', 'in_season']
+    ).count()
 
     return render(request, 'home.html', {
-        'categories': categories,
-        'featured_products': featured,
+        'categories':        categories,
+        'featured_products': featured_products,
+        'total_products':    total_products,
     })
-
 
 # ─────────────────────────────────────────────────────────────
 # MARKETPLACE / PRODUCTS

@@ -1,110 +1,223 @@
 {% extends 'base.html' %}
 {% block title %}Marketplace — Bristol Food Network{% endblock %}
 {% block content %}
-<div class="row">
-    <!-- Sidebar filters -->
-    <div class="col-md-3">
-        <div class="card mb-3">
-            <div class="card-header fw-semibold">Categories</div>
-            <div class="list-group list-group-flush">
-                <a href="{% url 'marketplace' %}{% if search_query %}?q={{ search_query }}{% endif %}"
-                   class="list-group-item list-group-item-action {% if not selected_category %}active{% endif %}">
-                    All Products
-                </a>
-                {% for cat in categories %}
-                <a href="{% url 'marketplace' %}?category={{ cat.slug }}{% if search_query %}&q={{ search_query }}{% endif %}"
-                   class="list-group-item list-group-item-action {% if selected_category.pk == cat.pk %}active{% endif %}">
-                    {{ cat.name }}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header fw-semibold">Filters</div>
-            <div class="card-body">
-                <form method="get">
-                    {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
-                    {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="organic" value="1"
-                               id="organicCheck" {% if organic_only %}checked{% endif %} onchange="this.form.submit()">
-                        <label class="form-check-label" for="organicCheck">Certified Organic Only</label>
-                    </div>
-                </form>
-            </div>
-        </div>
+
+<style>
+  .sidebar-card {
+    background: #fff; border-radius: 18px;
+    border: 1px solid #e8f0eb;
+    overflow: hidden; margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .sidebar-header {
+    background: var(--green-deep); color: white;
+    padding: 12px 18px; font-weight: 600; font-size: 0.88rem;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 18px; color: #4a5568; font-size: 0.9rem;
+    font-weight: 500; text-decoration: none;
+    border-bottom: 1px solid #f0f4f1;
+    transition: all 0.15s;
+  }
+  .sidebar-link:last-child { border-bottom: none; }
+  .sidebar-link:hover { background: var(--green-pale); color: var(--green-deep); }
+  .sidebar-link.active { background: var(--green-pale); color: var(--green-deep); font-weight: 700; }
+  .cat-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green-light); flex-shrink: 0;
+  }
+  .search-bar {
+    background: #fff; border-radius: 100px;
+    border: 1.5px solid #e2e8f0; padding: 8px 16px 8px 20px;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .search-bar input {
+    border: none; outline: none; background: transparent;
+    font-size: 0.9rem; flex: 1; color: #2d3748;
+  }
+  .search-bar button {
+    background: var(--green-deep); color: white;
+    border: none; border-radius: 100px;
+    padding: 6px 18px; font-size: 0.85rem; font-weight: 600;
+    transition: background 0.18s;
+  }
+  .search-bar button:hover { background: var(--green-mid); }
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem; font-weight: 700;
+    color: var(--green-deep); margin-bottom: 0;
+  }
+  .product-card {
+    background: #fff; border-radius: 18px;
+    border: 2px solid transparent;
+    overflow: hidden; height: 100%;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    transition: all 0.22s;
+  }
+  .product-card:hover { border-color: var(--green-light); transform: translateY(-5px); box-shadow: 0 12px 32px rgba(45,106,79,0.12); }
+  .product-img {
+    height: 155px; display: flex;
+    align-items: center; justify-content: center; font-size: 3.5rem;
+  }
+  .product-img.veg   { background: linear-gradient(135deg,#f0fdf4,#bbf7d0); }
+  .product-img.fruit { background: linear-gradient(135deg,#fff7ed,#fed7aa); }
+  .product-img.dairy { background: linear-gradient(135deg,#eff6ff,#bfdbfe); }
+  .product-img.bake  { background: linear-gradient(135deg,#fefce8,#fef08a); }
+  .product-img.default { background: linear-gradient(135deg,#f8fafc,#e2e8f0); }
+  .product-img img { width:100%; height:100%; object-fit:cover; }
+  .product-body { padding: 16px; }
+  .product-name { font-weight: 700; color: var(--green-deep); font-size: 0.95rem; margin-bottom: 2px; }
+  .product-producer { font-size: 0.78rem; color: #718096; margin-bottom: 10px; }
+  .product-desc { font-size: 0.83rem; color: #4a5568; margin-bottom: 12px; line-height: 1.5; }
+  .product-price { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: var(--green-mid); }
+  .product-unit { font-size: 0.78rem; color: #718096; font-family: 'DM Sans', sans-serif; }
+  .btn-view {
+    border: 1.5px solid var(--green-light); color: var(--green-mid);
+    background: transparent; border-radius: 100px;
+    padding: 6px 16px; font-size: 0.82rem; font-weight: 600;
+    text-decoration: none; transition: all 0.18s;
+  }
+  .btn-view:hover { background: var(--green-pale); color: var(--green-deep); }
+  .btn-add {
+    background: var(--green-mid); color: white;
+    border: none; border-radius: 100px;
+    padding: 6px 16px; font-size: 0.82rem; font-weight: 600;
+    transition: all 0.18s;
+  }
+  .btn-add:hover { background: var(--green-deep); }
+  .badge-pill { border-radius: 100px; padding: 3px 10px; font-size: 0.72rem; font-weight: 600; }
+</style>
+
+<div class="row g-4">
+  <!-- Sidebar -->
+  <div class="col-lg-3 col-md-4">
+    <div class="sidebar-card">
+      <div class="sidebar-header">Categories</div>
+      <a href="{% url 'marketplace' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+         class="sidebar-link {% if not selected_category %}active{% endif %}">
+        <span class="cat-dot" style="background:#94a3b8;"></span> All Products
+      </a>
+      {% for cat in categories %}
+      <a href="{% url 'marketplace' %}?category={{ cat.slug }}{% if search_query %}&q={{ search_query }}{% endif %}"
+         class="sidebar-link {% if selected_category.pk == cat.pk %}active{% endif %}">
+        <span class="cat-dot" style="background:
+          {% if cat.slug == 'vegetables' %}#22c55e
+          {% elif cat.slug == 'fruit' %}#f97316
+          {% elif cat.slug == 'dairy' %}#3b82f6
+          {% elif cat.slug == 'bakery' %}#eab308
+          {% else %}#94a3b8{% endif %};"></span>
+        {{ cat.name }}
+      </a>
+      {% endfor %}
     </div>
 
-    <!-- Product grid -->
-    <div class="col-md-9">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4>
-                {% if selected_category %}{{ selected_category.name }}{% else %}All Products{% endif %}
-                <small class="text-muted fs-6">({{ products|length }} items)</small>
-            </h4>
-            <form method="get" class="d-flex gap-2">
-                {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
-                {% if organic_only %}<input type="hidden" name="organic" value="1">{% endif %}
-                <input type="text" class="form-control form-control-sm" name="q"
-                       placeholder="Search products..." value="{{ search_query }}">
-                <button class="btn btn-sm btn-outline-success" type="submit">Search</button>
-                {% if search_query %}<a href="{% url 'marketplace' %}" class="btn btn-sm btn-outline-secondary">Clear</a>{% endif %}
-            </form>
-        </div>
+    <div class="sidebar-card">
+      <div class="sidebar-header">Filters</div>
+      <div class="p-3">
+        <form method="get">
+          {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
+          {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="organic" value="1"
+                   id="organicCheck" {% if organic_only %}checked{% endif %} onchange="this.form.submit()">
+            <label class="form-check-label text-muted small fw-500" for="organicCheck">
+              🌱 Certified Organic Only
+            </label>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
-        {% if search_query and not products %}
-        <div class="alert alert-info">No products found for "{{ search_query }}". Try a different search term.</div>
-        {% endif %}
+  <!-- Main content -->
+  <div class="col-lg-9 col-md-8">
+    <div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+      <div>
+        <h1 class="page-title">
+          {% if selected_category %}{{ selected_category.name }}{% else %}All Products{% endif %}
+        </h1>
+        <small class="text-muted">{{ products|length }} item{{ products|length|pluralize }} available</small>
+      </div>
+      <form method="get" class="search-bar" style="min-width:260px;">
+        {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
+        {% if organic_only %}<input type="hidden" name="organic" value="1">{% endif %}
+        <i class="bi bi-search text-muted"></i>
+        <input type="text" name="q" placeholder="Search products..." value="{{ search_query }}">
+        <button type="submit">Search</button>
+        {% if search_query %}<a href="{% url 'marketplace' %}" style="color:#94a3b8;font-size:1.1rem;text-decoration:none;">✕</a>{% endif %}
+      </form>
+    </div>
 
-        <div class="row g-3">
-            {% for product in products %}
-            <div class="col-md-4">
-                <div class="card h-100">
-                    {% if product.image %}
-                    <img src="{{ product.image.url }}" class="card-img-top" style="height:150px;object-fit:cover;" alt="{{ product.name }}">
-                    {% else %}
-                    <div class="bg-light d-flex align-items-center justify-content-center" style="height:150px;font-size:2.5rem;">🛒</div>
-                    {% endif %}
-                    <div class="card-body d-flex flex-column">
-                        <h6 class="card-title mb-1">{{ product.name }}</h6>
-                        <small class="text-muted mb-2">{{ product.producer.business_name }}</small>
-                        <div class="mb-2">
-                            {% if product.is_organic %}<span class="badge badge-organic me-1">Organic</span>{% endif %}
-                            {% if product.availability == 'in_season' %}<span class="badge seasonal-badge me-1">In Season</span>{% endif %}
-                            {% if product.is_surplus %}<span class="badge surplus-badge">{{ product.surplus_discount_percent }}% Off</span>{% endif %}
-                            {% if product.product_allergens.exists %}<span class="badge allergen-badge">Has Allergens</span>{% endif %}
-                        </div>
-                        <p class="small text-muted flex-grow-1">{{ product.description|truncatewords:12 }}</p>
-                        <div class="d-flex justify-content-between align-items-center mt-auto">
-                            <div>
-                                {% if product.is_surplus and product.surplus_discount_percent > 0 %}
-                                <small class="text-decoration-line-through text-muted">£{{ product.price }}</small>
-                                <strong class="text-success"> £{{ product.discounted_price }}</strong>
-                                {% else %}
-                                <strong class="text-success">£{{ product.price }}</strong>
-                                {% endif %}
-                                <small class="text-muted">/{{ product.get_unit_display }}</small>
-                            </div>
-                            <div class="d-flex gap-2">
-    <a href="{% url 'product_detail' product.pk %}" class="btn btn-sm btn-outline-success">View</a>
-    {% if user.is_authenticated and user.role == 'customer' %}
-    <form method="post" action="{% url 'add_to_cart' product.pk %}">
-        {% csrf_token %}
-        <input type="hidden" name="quantity" value="1">
-        <button type="submit" class="btn btn-sm btn-success">+ Add</button>
-    </form>
+    {% if search_query and not products %}
+    <div class="alert alert-info border-0 rounded-3">No products found for "{{ search_query }}".</div>
     {% endif %}
-</div>
-                        </div>
-                    </div>
-                </div>
+
+    <div class="row g-3">
+      {% for product in products %}
+      <div class="col-md-4 col-sm-6">
+        <div class="product-card">
+          <div class="product-img
+            {% if product.category.slug == 'vegetables' %}veg
+            {% elif product.category.slug == 'fruit' %}fruit
+            {% elif product.category.slug == 'dairy' %}dairy
+            {% elif product.category.slug == 'bakery' %}bake
+            {% else %}default{% endif %}">
+            {% if product.image %}
+              <img src="{{ product.image.url }}" alt="{{ product.name }}">
+            {% else %}
+              {% if product.category.slug == 'vegetables' %}🥦
+              {% elif product.category.slug == 'fruit' %}🍓
+              {% elif product.category.slug == 'dairy' %}🥛
+              {% elif product.category.slug == 'bakery' %}🥐
+              {% else %}🛒{% endif %}
+            {% endif %}
+          </div>
+          <div class="product-body">
+            <div class="d-flex gap-1 flex-wrap mb-2">
+              {% if product.is_organic %}<span class="badge badge-pill" style="background:#dcfce7;color:#166534;">✓ Organic</span>{% endif %}
+              {% if product.availability == 'in_season' %}<span class="badge badge-pill" style="background:#fef3c7;color:#92400e;">🌱 In Season</span>{% endif %}
+              {% if product.is_surplus %}<span class="badge badge-pill" style="background:#dbeafe;color:#1e40af;">⚡ {{ product.surplus_discount_percent }}% Off</span>{% endif %}
+              {% if product.product_allergens.exists %}<span class="badge badge-pill" style="background:#fee2e2;color:#991b1b;">⚠ Allergens</span>{% endif %}
             </div>
-            {% empty %}
-            <div class="col-12">
-                <p class="text-muted">No products available in this category.</p>
+            <div class="product-name">{{ product.name }}</div>
+            <div class="product-producer">{{ product.producer.business_name }}</div>
+            <div class="product-desc">{{ product.description|truncatewords:10 }}</div>
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                {% if product.is_surplus and product.surplus_discount_percent > 0 %}
+                  <small class="text-decoration-line-through text-muted">£{{ product.price }}</small>
+                  <span class="product-price"> £{{ product.discounted_price }}</span>
+                {% else %}
+                  <span class="product-price">£{{ product.price }}</span>
+                {% endif %}
+                <span class="product-unit">/{{ product.get_unit_display }}</span>
+              </div>
+              <div class="d-flex gap-2">
+                <a href="{% url 'product_detail' product.pk %}" class="btn-view">View</a>
+                {% if user.is_authenticated and not user.is_producer %}
+                <form method="post" action="{% url 'add_to_cart' product.pk %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="quantity" value="1">
+                  <button type="submit" class="btn-add">+ Add</button>
+                </form>
+                {% endif %}
+              </div>
             </div>
-            {% endfor %}
+          </div>
         </div>
+      </div>
+      {% empty %}
+      <div class="col-12 text-center py-5">
+        <div style="font-size:3rem;">🌿</div>
+        <h5 class="mt-3 text-muted">No products available</h5>
+        <a href="{% url 'marketplace' %}" class="btn btn-outline-success mt-2">View All Products</a>
+      </div>
+      {% endfor %}
     </div>
+  </div>
 </div>
+
 {% endblock %}

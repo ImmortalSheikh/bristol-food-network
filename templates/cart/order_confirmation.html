@@ -23,16 +23,6 @@
     <p class="text-muted">
         Delivery expected: <strong>{{ order.delivery_date|date:'d M Y' }}</strong>
     </p>
-
-    <!-- Total food miles summary -->
-    {% if total_food_miles is not None %}
-    <div class="d-inline-block mt-1 mb-2">
-        <span class="badge bg-success py-2 px-3 fs-6">
-            🌍 Total food miles for this order: {{ total_food_miles }} miles
-        </span>
-        <div class="text-muted small mt-1">Supporting local food within Bristol's 20-mile network</div>
-    </div>
-    {% endif %}
 </div>
 
 <div class="row justify-content-center">
@@ -46,12 +36,7 @@
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td>
-                            {{ item.product.name }} × {{ item.quantity }}
-                            <!-- Food miles per producer inline -->
-                            {% with miles=producer_food_miles|default:'' %}
-                            {% endwith %}
-                        </td>
+                        <td>{{ item.product.name }} × {{ item.quantity }}</td>
                         <td class="text-end">£{{ item.subtotal }}</td>
                     </tr>
                     {% endfor %}
@@ -62,22 +47,20 @@
                     </tr>
 
                     <tr>
-                        <td class="text-muted small">Network Commission (5%)</td>
-                        <td class="text-end text-muted small">£{{ order.commission_amount }}</td>
+                        <td class="text-muted small">
+                            Network Commission (5%)
+                        </td>
+                        <td class="text-end text-muted small">
+                            £{{ order.commission_amount }}
+                        </td>
                     </tr>
-
-                    {% if total_food_miles is not None %}
-                    <tr>
-                        <td class="text-muted small">🌍 Total food miles</td>
-                        <td class="text-end text-muted small">{{ total_food_miles }} miles</td>
-                    </tr>
-                    {% endif %}
                 </tbody>
             </table>
 
             <p class="text-muted small mt-2">
                 <i class="bi bi-geo-alt"></i>
-                Delivery to: {{ order.delivery_address }}, {{ order.delivery_postcode }}
+                Delivery to:
+                {{ order.delivery_address }}, {{ order.delivery_postcode }}
             </p>
 
             {% if order.special_instructions %}
@@ -92,28 +75,22 @@
         <div class="card p-4 mb-3">
             <h5>Supplier Contact Details</h5>
             <ul class="list-group list-group-flush">
+
                 {% for item in items %}
                     {% ifchanged item.producer.pk %}
                         <li class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>{{ item.producer.business_name }}</strong><br>
-                                    Contact: {{ item.producer.contact_name }}<br>
-                                    Email: {{ item.producer.user.email }}<br>
-                                    {% if item.producer.user.phone %}
-                                        Phone: {{ item.producer.user.phone }}
-                                    {% endif %}
-                                </div>
-                                <!-- Food miles per producer -->
-                                {% if producer_food_miles %}
-                                    {% with miles=producer_food_miles|default_if_none:'' %}
-                                    {% endwith %}
-                                {% endif %}
-                            </div>
+                            <strong>{{ item.producer.business_name }}</strong><br>
+                            Contact: {{ item.producer.contact_name }}<br>
+                            Email: {{ item.producer.user.email }}<br>
+                            {% if item.producer.user.phone %}
+                                Phone: {{ item.producer.user.phone }}
+                            {% endif %}
                         </li>
                     {% endifchanged %}
                 {% endfor %}
+
             </ul>
+
             <p class="text-muted small mt-2 mb-0">
                 Use these contact details if you need to coordinate delivery.
             </p>

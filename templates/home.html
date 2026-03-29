@@ -1,62 +1,531 @@
 {% extends 'base.html' %}
-{% block title %}Bristol Food Network — Local Food Marketplace{% endblock %}
+{% block title %}Bristol Food Network — Fresh, Local, Bristol{% endblock %}
+
 {% block content %}
-<div class="row align-items-center py-4 mb-4 bg-light rounded">
-    <div class="col-md-8">
-        <h1 class="display-5 fw-bold text-success">Fresh, Local, Bristol</h1>
-        <p class="lead">Shop directly from farms and producers within 20 miles of Bristol city centre.</p>
-        <a href="{% url 'marketplace' %}" class="btn btn-primary btn-lg me-2">Browse Products</a>
-        {% if not user.is_authenticated %}
-        <a href="{% url 'register' %}" class="btn btn-outline-success btn-lg">Join the Network</a>
-        {% endif %}
-    </div>
-    <div class="col-md-4 text-center fs-1">🌿🥕🧀🍓</div>
-</div>
 
-<h3 class="mb-3">Shop by Category</h3>
-<div class="row g-3 mb-5">
-    {% for category in categories %}
-    <div class="col-6 col-md-4 col-lg-2">
-        <a href="{% url 'marketplace' %}?category={{ category.slug }}" class="text-decoration-none">
-            <div class="card text-center h-100 py-3">
-                <div class="card-body">
-                    <div class="fs-2 mb-1">🛒</div>
-                    <small class="fw-semibold text-dark">{{ category.name }}</small>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% empty %}
-    <p class="text-muted">No categories yet.</p>
-    {% endfor %}
-</div>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap');
 
-<h3 class="mb-3">Featured Products</h3>
-<div class="row g-3">
-    {% for product in featured_products %}
-    <div class="col-md-3">
-        <div class="card h-100">
-            {% if product.image %}
-            <img src="{{ product.image.url }}" class="card-img-top" style="height:160px;object-fit:cover;" alt="{{ product.name }}">
-            {% else %}
-            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height:160px;font-size:3rem;">🥬</div>
-            {% endif %}
-            <div class="card-body">
-                <h6 class="card-title mb-1">{{ product.name }}</h6>
-                <small class="text-muted">{{ product.producer.business_name }}</small>
-                <div class="mt-2">
-                    {% if product.is_organic %}<span class="badge badge-organic me-1">Organic</span>{% endif %}
-                    {% if product.availability == 'in_season' %}<span class="badge seasonal-badge">In Season</span>{% endif %}
-                </div>
-                <div class="d-flex justify-content-between align-items-center mt-2">
-                    <strong class="text-success">£{{ product.discounted_price }}/{{ product.get_unit_display }}</strong>
-                    <a href="{% url 'product_detail' product.pk %}" class="btn btn-sm btn-outline-success">View</a>
-                </div>
-            </div>
+  :root {
+    --green-deep:   #1a3a2a;
+    --green-mid:    #2d6a4f;
+    --green-light:  #52b788;
+    --green-pale:   #d8f3dc;
+    --cream:        #faf7f2;
+    --warm-white:   #ffffff;
+    --text-dark:    #1a1a1a;
+    --text-mid:     #4a5568;
+    --gold:         #d4a017;
+  }
+
+  body { background: var(--cream); font-family: 'DM Sans', sans-serif; }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--green-deep);
+    border-radius: 24px;
+    padding: 80px 60px;
+    margin-bottom: 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(82,183,136,0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 30%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(212,160,23,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    display: inline-block;
+    background: rgba(82,183,136,0.2);
+    color: var(--green-light);
+    border: 1px solid rgba(82,183,136,0.3);
+    border-radius: 100px;
+    padding: 6px 18px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.8rem, 5vw, 4.5rem);
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+  .hero h1 span { color: var(--green-light); }
+  .hero p {
+    color: rgba(255,255,255,0.65);
+    font-size: 1.1rem;
+    max-width: 480px;
+    line-height: 1.7;
+    margin-bottom: 36px;
+    font-weight: 300;
+  }
+  .hero-btn {
+    background: var(--green-light);
+    color: var(--green-deep);
+    border: none;
+    border-radius: 100px;
+    padding: 14px 36px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px rgba(82,183,136,0.35);
+  }
+  .hero-btn:hover {
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(82,183,136,0.4);
+    color: var(--green-deep);
+  }
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-top: 48px;
+    padding-top: 40px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .hero-stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .hero-stat-label {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .hero-emoji-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-emoji-card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 28px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease;
+  }
+  .hero-emoji-card:hover { transform: translateY(-4px); }
+  .hero-emoji-card .emoji { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+  .hero-emoji-card .label { color: rgba(255,255,255,0.7); font-size: 0.85rem; }
+
+  /* ── SECTION TITLES ── */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--green-deep);
+    margin-bottom: 8px;
+  }
+  .section-sub {
+    color: var(--text-mid);
+    font-size: 0.95rem;
+    margin-bottom: 32px;
+  }
+
+  /* ── CATEGORY CARDS ── */
+  .category-card {
+    background: var(--warm-white);
+    border-radius: 20px;
+    padding: 32px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+    border: 2px solid transparent;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .category-card:hover {
+    border-color: var(--green-light);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(45,106,79,0.12);
+  }
+  .category-card .cat-emoji {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 14px;
+  }
+  .category-card .cat-name {
+    font-weight: 600;
+    color: var(--green-deep);
+    font-size: 1rem;
+  }
+  .category-card .cat-count {
+    font-size: 0.8rem;
+    color: var(--text-mid);
+    margin-top: 4px;
+  }
+  .cat-veg   { background: linear-gradient(135deg, #f0fdf4, #dcfce7); }
+  .cat-fruit { background: linear-gradient(135deg, #fff7ed, #fed7aa); }
+  .cat-dairy { background: linear-gradient(135deg, #eff6ff, #dbeafe); }
+  .cat-bake  { background: linear-gradient(135deg, #fefce8, #fef08a); }
+
+  /* ── PRODUCT CARDS ── */
+  .product-card {
+    background: var(--warm-white);
+    border-radius: 20px;
+    overflow: hidden;
+    border: none;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
+    height: 100%;
+  }
+  .product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.1);
+  }
+  .product-img-wrap {
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    position: relative;
+  }
+  .product-img-wrap.veg   { background: linear-gradient(135deg, #f0fdf4, #bbf7d0); }
+  .product-img-wrap.fruit { background: linear-gradient(135deg, #fff7ed, #fed7aa); }
+  .product-img-wrap.dairy { background: linear-gradient(135deg, #eff6ff, #bfdbfe); }
+  .product-img-wrap.bake  { background: linear-gradient(135deg, #fefce8, #fef08a); }
+  .product-img-wrap img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .product-card-body { padding: 18px; }
+  .product-name {
+    font-weight: 600;
+    color: var(--green-deep);
+    font-size: 1rem;
+    margin-bottom: 2px;
+  }
+  .product-producer {
+    font-size: 0.8rem;
+    color: var(--text-mid);
+    margin-bottom: 10px;
+  }
+  .product-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--green-mid);
+  }
+  .product-unit { font-size: 0.8rem; color: var(--text-mid); font-family: 'DM Sans', sans-serif; }
+  .btn-add {
+    background: var(--green-mid);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .btn-add:hover { background: var(--green-deep); color: white; transform: scale(1.03); }
+  .btn-view {
+    background: transparent;
+    color: var(--green-mid);
+    border: 1.5px solid var(--green-light);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .btn-view:hover { background: var(--green-pale); color: var(--green-deep); }
+
+  /* ── PRODUCERS STRIP ── */
+  .producer-strip {
+    background: var(--green-deep);
+    border-radius: 24px;
+    padding: 50px 60px;
+    margin: 60px 0;
+  }
+  .producer-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 28px 24px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .producer-card:hover {
+    background: rgba(255,255,255,0.14);
+    transform: translateY(-3px);
+  }
+  .producer-card .p-emoji { font-size: 2.5rem; margin-bottom: 12px; }
+  .producer-card .p-name { color: #fff; font-weight: 600; font-size: 1rem; }
+  .producer-card .p-loc  { color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 4px; }
+
+  /* ── WHY US ── */
+  .why-card {
+    background: var(--warm-white);
+    border-radius: 20px;
+    padding: 32px 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    border-left: 4px solid var(--green-light);
+  }
+  .why-icon { font-size: 2rem; margin-bottom: 14px; }
+  .why-title { font-weight: 700; color: var(--green-deep); font-size: 1rem; margin-bottom: 8px; }
+  .why-text { color: var(--text-mid); font-size: 0.9rem; line-height: 1.6; }
+
+  /* ── CTA BANNER ── */
+  .cta-banner {
+    background: linear-gradient(135deg, var(--green-mid), var(--green-deep));
+    border-radius: 24px;
+    padding: 60px;
+    text-align: center;
+    margin-bottom: 60px;
+  }
+  .cta-banner h2 {
+    font-family: 'Playfair Display', serif;
+    color: #fff;
+    font-size: 2.2rem;
+    margin-bottom: 12px;
+  }
+  .cta-banner p { color: rgba(255,255,255,0.7); margin-bottom: 28px; }
+  .badge-organic {
+    background: var(--green-pale);
+    color: var(--green-deep);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+</style>
+
+<!-- ── HERO ── -->
+<div class="hero">
+  <div class="row align-items-center">
+    <div class="col-lg-7">
+      <div class="hero-tag">🌿 Bristol Regional Food Network</div>
+      <h1>Fresh from the<br><span>farm to your door</span></h1>
+      <p>Shop directly from local farms and producers within 20 miles of Bristol city centre. Real food, real people, real community.</p>
+      <a href="{% url 'marketplace' %}" class="hero-btn">
+        Browse Products <i class="bi bi-arrow-right"></i>
+      </a>
+      {% if not user.is_authenticated %}
+      <a href="{% url 'register' %}" class="hero-btn ms-3" style="background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.3);box-shadow:none;">
+        Join the Network
+      </a>
+      {% endif %}
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-num">{{ total_products|default:"12" }}+</div>
+          <div class="hero-stat-label">Products</div>
         </div>
+        <div>
+          <div class="hero-stat-num">3</div>
+          <div class="hero-stat-label">Local Producers</div>
+        </div>
+        <div>
+          <div class="hero-stat-num">20mi</div>
+          <div class="hero-stat-label">Radius</div>
+        </div>
+      </div>
     </div>
-    {% empty %}
-    <p class="text-muted">No products available yet.</p>
-    {% endfor %}
+    <div class="col-lg-5 d-none d-lg-block">
+      <div class="hero-emoji-grid">
+        <div class="hero-emoji-card">
+          <span class="emoji">🥕</span>
+          <span class="label">Vegetables</span>
+        </div>
+        <div class="hero-emoji-card">
+          <span class="emoji">🍎</span>
+          <span class="label">Fruit</span>
+        </div>
+        <div class="hero-emoji-card">
+          <span class="emoji">🧀</span>
+          <span class="label">Dairy</span>
+        </div>
+        <div class="hero-emoji-card">
+          <span class="emoji">🥐</span>
+          <span class="label">Bakery</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- ── CATEGORIES ── -->
+<div class="mb-5">
+  <h2 class="section-title">Shop by Category</h2>
+  <p class="section-sub">Browse our range of fresh, locally sourced produce</p>
+  <div class="row g-3">
+    {% for category in categories %}
+    <div class="col-6 col-md-3">
+      <a href="{% url 'marketplace' %}?category={{ category.slug }}" class="category-card
+        {% if category.slug == 'vegetables' %}cat-veg
+        {% elif category.slug == 'fruit' %}cat-fruit
+        {% elif category.slug == 'dairy' %}cat-dairy
+        {% elif category.slug == 'bakery' %}cat-bake{% endif %}">
+        <span class="cat-emoji">
+          {% if category.slug == 'vegetables' %}🥦
+          {% elif category.slug == 'fruit' %}🍓
+          {% elif category.slug == 'dairy' %}🥛
+          {% elif category.slug == 'bakery' %}🍞
+          {% else %}🛒{% endif %}
+        </span>
+        <div class="cat-name">{{ category.name }}</div>
+        <div class="cat-count">{{ category.products.count }} products</div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── FEATURED PRODUCTS ── -->
+<div class="mb-5">
+  <div class="d-flex justify-content-between align-items-end mb-1">
+    <h2 class="section-title mb-0">Featured Products</h2>
+    <a href="{% url 'marketplace' %}" class="text-decoration-none" style="color:var(--green-mid);font-weight:500;font-size:0.9rem;">
+      View all <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+  <p class="section-sub">Handpicked from our producers this week</p>
+  <div class="row g-3">
+    {% for product in featured_products %}
+    <div class="col-6 col-md-3">
+      <div class="product-card">
+        <div class="product-img-wrap
+          {% if product.category.slug == 'vegetables' %}veg
+          {% elif product.category.slug == 'fruit' %}fruit
+          {% elif product.category.slug == 'dairy' %}dairy
+          {% elif product.category.slug == 'bakery' %}bake{% endif %}">
+          {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}">
+          {% else %}
+            {% if product.category.slug == 'vegetables' %}🥦
+            {% elif product.category.slug == 'fruit' %}🍓
+            {% elif product.category.slug == 'dairy' %}🥛
+            {% elif product.category.slug == 'bakery' %}🥐
+            {% else %}🛒{% endif %}
+          {% endif %}
+        </div>
+        <div class="product-card-body">
+          {% if product.is_organic %}
+            <span class="badge-organic mb-2 d-inline-block">✓ Organic</span>
+          {% endif %}
+          <div class="product-name">{{ product.name }}</div>
+          <div class="product-producer">{{ product.producer.business_name }}</div>
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <div>
+              <span class="product-price">£{{ product.discounted_price }}</span>
+              <span class="product-unit"> /{{ product.get_unit_display }}</span>
+            </div>
+            <a href="{% url 'product_detail' product.pk %}" class="btn-view">View</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── LOCAL PRODUCERS ── -->
+<div class="producer-strip">
+  <div class="row align-items-center mb-4">
+    <div class="col">
+      <h2 class="section-title mb-1" style="color:#fff;">Our Local Producers</h2>
+      <p style="color:rgba(255,255,255,0.55);margin:0;">Real farms, real people, within 20 miles of Bristol</p>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="producer-card">
+        <div class="p-emoji">🌿</div>
+        <div class="p-name">Green Valley Farm</div>
+        <div class="p-loc">📍 BS9 · Vegetables & Fruit</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="producer-card">
+        <div class="p-emoji">🐄</div>
+        <div class="p-name">Bristol Dairy Co</div>
+        <div class="p-loc">📍 BS5 · Dairy Products</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="producer-card">
+        <div class="p-emoji">🥖</div>
+        <div class="p-name">Artisan Bakery Bristol</div>
+        <div class="p-loc">📍 BS1 · Fresh Baked Goods</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WHY BFN ── -->
+<div class="mb-5">
+  <h2 class="section-title">Why Bristol Food Network?</h2>
+  <p class="section-sub">Supporting local food systems that benefit everyone</p>
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="why-card">
+        <div class="why-icon">🌱</div>
+        <div class="why-title">Locally Grown</div>
+        <div class="why-text">All produce comes from farms within 20 miles of Bristol city centre.</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="why-card" style="border-left-color:#d4a017;">
+        <div class="why-icon">💰</div>
+        <div class="why-title">Fair Prices</div>
+        <div class="why-text">Producers receive 95% of every sale. Only a 5% network fee applies.</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="why-card" style="border-left-color:#3b82f6;">
+        <div class="why-icon">🚚</div>
+        <div class="why-title">Fresh Delivery</div>
+        <div class="why-text">Orders are picked fresh and delivered directly to your door or collected locally.</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="why-card" style="border-left-color:#8b5cf6;">
+        <div class="why-icon">🤝</div>
+        <div class="why-title">Community First</div>
+        <div class="why-text">Supporting restaurants, community groups and individuals across Bristol.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CTA ── -->
+{% if not user.is_authenticated %}
+<div class="cta-banner">
+  <h2>Ready to shop local?</h2>
+  <p>Join hundreds of Bristol residents shopping directly from local farms.</p>
+  <a href="{% url 'register' %}" class="hero-btn me-3">Create an Account</a>
+  <a href="{% url 'marketplace' %}" class="hero-btn" style="background:rgba(255,255,255,0.15);color:#fff;box-shadow:none;">
+    Browse First
+  </a>
+</div>
+{% endif %}
+
 {% endblock %}

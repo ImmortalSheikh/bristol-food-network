@@ -1,89 +1,114 @@
 {% extends 'base.html' %}
 {% block title %}Checkout — Bristol Food Network{% endblock %}
 {% block content %}
-<h2 class="mb-4">Checkout</h2>
+
+<style>
+  .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
+  .checkout-card { background:#fff; border-radius:20px; border:1px solid #e8f0eb; padding:32px; box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+  .section-title { font-weight:700; color:var(--green-deep); font-size:1rem; margin-bottom:16px; padding-bottom:10px; border-bottom:2px solid var(--green-pale); }
+  .form-label { font-weight:600; font-size:0.85rem; color:#2d3748; margin-bottom:6px; }
+  .form-control { border:1.5px solid #e2e8f0; border-radius:12px; padding:11px 16px; font-size:0.9rem; transition:border-color 0.18s; background:#fafafa; }
+  .form-control:focus { border-color:var(--green-light); box-shadow:0 0 0 3px rgba(82,183,136,0.12); background:#fff; }
+  .summary-card { background:#fff; border-radius:20px; border:1px solid #e8f0eb; padding:28px; box-shadow:0 2px 12px rgba(0,0,0,0.04); position:sticky; top:80px; }
+  .summary-title { font-family:'Playfair Display',serif; font-size:1.2rem; font-weight:700; color:var(--green-deep); margin-bottom:20px; }
+  .summary-item { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f8fafc; font-size:0.88rem; }
+  .summary-item:last-of-type { border-bottom:none; }
+  .summary-total { font-family:'Playfair Display',serif; font-size:1.5rem; font-weight:700; color:var(--green-mid); }
+  .btn-place-order { background:var(--green-deep); color:white; border:none; border-radius:14px; padding:15px; font-size:1rem; font-weight:700; width:100%; transition:all 0.2s; }
+  .btn-place-order:hover { background:var(--green-mid); transform:translateY(-1px); box-shadow:0 4px 20px rgba(45,106,79,0.3); }
+  .payment-test { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-radius:12px; padding:14px 16px; font-size:0.85rem; color:#1e40af; border:1px solid #bfdbfe; margin-bottom:20px; }
+  .input-disabled { background:#f1f5f9!important; color:#94a3b8; cursor:not-allowed; }
+</style>
+
+<h1 class="page-title mb-4">Checkout</h1>
 
 {% if request.user.role == "community_group" and customer_profile.organisation_name %}
-  <div class="alert alert-info">
-    Ordering for: <strong>{{ customer_profile.organisation_name }}</strong>
-  </div>
+<div class="alert alert-info border-0 rounded-3 mb-4">
+  <i class="bi bi-people-fill me-2"></i> Ordering for: <strong>{{ customer_profile.organisation_name }}</strong>
+</div>
 {% endif %}
 
-<div class="row">
-    <div class="col-md-7">
-        <div class="card p-4">
-            <form method="post">
-                {% csrf_token %}
-                <h5 class="mb-3">Delivery Details</h5>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Delivery Address</label>
-                    <textarea name="delivery_address" class="form-control" rows="3" required>{{ customer_profile.delivery_address }}</textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Postcode</label>
-                    <input type="text" name="delivery_postcode" class="form-control"
-                           value="{{ customer_profile.delivery_postcode }}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Delivery Date</label>
-                    <input type="date" name="delivery_date" class="form-control"
-                           min="{{ min_delivery|date:'Y-m-d' }}" required>
-                    <div class="form-text">Minimum 48 hours from today (earliest: {{ min_delivery|date:'d M Y' }})</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Special Instructions (optional)</label>
-                    <textarea name="special_instructions" class="form-control" rows="2"
-                              placeholder="e.g. Leave at front door, contact on arrival..."></textarea>
-                </div>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="checkout-card">
+      <form method="post">
+        {% csrf_token %}
 
-                <h5 class="mt-4 mb-3">Payment (Test Mode)</h5>
-                <div class="alert alert-info small">
-                    <i class="bi bi-info-circle"></i> This is a test environment. No real payment will be processed.
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Card Number</label>
-                    <input type="text" class="form-control" placeholder="4242 4242 4242 4242" disabled>
-                </div>
-                <div class="row">
-                    <div class="col-6 mb-3">
-                        <label class="form-label fw-semibold">Expiry</label>
-                        <input type="text" class="form-control" placeholder="MM/YY" disabled>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <label class="form-label fw-semibold">CVV</label>
-                        <input type="text" class="form-control" placeholder="123" disabled>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 btn-lg">
-                    Place Order — £{{ cart.total }}
-                </button>
-            </form>
+        <div class="section-title"><i class="bi bi-geo-alt me-2"></i>Delivery Details</div>
+        <div class="mb-3">
+          <label class="form-label">Delivery Address</label>
+          <textarea name="delivery_address" class="form-control" rows="3" required>{{ customer_profile.delivery_address }}</textarea>
         </div>
-    </div>
-    <div class="col-md-5">
-        <div class="card p-3">
-            <h5>Order Summary</h5>
-            {% for item in cart.cart_items.all %}
-            <div class="d-flex justify-content-between small mb-1">
-                <span>{{ item.product.name }} × {{ item.quantity }}</span>
-                <span>£{{ item.subtotal }}</span>
-            </div>
-            {% endfor %}
-            <hr>
-            <div class="d-flex justify-content-between">
-                <span>Subtotal</span>
-                <strong>£{{ cart.total }}</strong>
-            </div>
-            <div class="d-flex justify-content-between text-muted small">
-                <span>Network Commission (5%)</span>
-                <span>included in price</span>
-            </div>
-            <hr>
-            <div class="d-flex justify-content-between fs-5">
-                <strong>Total</strong>
-                <strong class="text-success">£{{ cart.total }}</strong>
-            </div>
+        <div class="row">
+          <div class="col-md-5 mb-3">
+            <label class="form-label">Postcode</label>
+            <input type="text" name="delivery_postcode" class="form-control" value="{{ customer_profile.delivery_postcode }}" required>
+          </div>
+          <div class="col-md-7 mb-3">
+            <label class="form-label">Delivery Date</label>
+            <input type="date" name="delivery_date" class="form-control" min="{{ min_delivery|date:'Y-m-d' }}" required>
+            <div class="form-text text-muted small mt-1"><i class="bi bi-clock me-1"></i>Earliest: {{ min_delivery|date:'d M Y' }}</div>
+          </div>
         </div>
+        <div class="mb-4">
+          <label class="form-label">Special Instructions <span class="text-muted fw-normal">(optional)</span></label>
+          <textarea name="special_instructions" class="form-control" rows="2" placeholder="e.g. Leave at front door, ring doorbell..."></textarea>
+        </div>
+
+        <div class="section-title"><i class="bi bi-credit-card me-2"></i>Payment</div>
+        <div class="payment-test">
+          <i class="bi bi-shield-check me-2"></i>
+          Test environment — no real payment will be processed.
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Card Number</label>
+          <input type="text" class="form-control input-disabled" placeholder="4242 4242 4242 4242" disabled>
+        </div>
+        <div class="row">
+          <div class="col-6 mb-4">
+            <label class="form-label">Expiry</label>
+            <input type="text" class="form-control input-disabled" placeholder="MM/YY" disabled>
+          </div>
+          <div class="col-6 mb-4">
+            <label class="form-label">CVV</label>
+            <input type="text" class="form-control input-disabled" placeholder="123" disabled>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-place-order">
+          <i class="bi bi-lock-fill me-2"></i>Place Order — £{{ cart.total }}
+        </button>
+      </form>
     </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="summary-card">
+      <div class="summary-title">Order Summary</div>
+      {% for item in cart.cart_items.all %}
+      <div class="summary-item">
+        <span>{{ item.product.name }} <span class="text-muted">× {{ item.quantity }}</span></span>
+        <strong>£{{ item.subtotal }}</strong>
+      </div>
+      {% endfor %}
+      <hr style="border-color:#e8f0eb;margin:16px 0;">
+      <div class="d-flex justify-content-between mb-2 text-muted small">
+        <span>Subtotal</span><strong style="color:#2d3748;">£{{ cart.total }}</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-3 text-muted small">
+        <span>Network Commission (5%)</span><span>included in price</span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center pt-2" style="border-top:2px solid var(--green-pale);">
+        <strong style="font-size:1rem;">Total</strong>
+        <span class="summary-total">£{{ cart.total }}</span>
+      </div>
+      <div class="mt-4 p-3 rounded-3 text-center" style="background:var(--green-pale);">
+        <small style="color:var(--green-deep);font-weight:500;">
+          🌿 95% of this order goes directly to local producers
+        </small>
+      </div>
+    </div>
+  </div>
 </div>
+
 {% endblock %}

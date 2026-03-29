@@ -11,25 +11,20 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold" for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {% if field.field.widget.input_type == 'checkbox' and not field.name == 'allergens' %}
-                        <div class="form-check">{{ field }}</div>
+                    <div class="form-check">{{ field }}</div>
                     {% elif field.name == 'allergens' %}
-                        <div class="row row-cols-2 row-cols-md-3 g-2 mt-1">
-                            {% for checkbox in field %}
-                            <div class="col">
-                                <div class="form-check">
-                                    {{ checkbox.tag }}
-                                    <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
-                                </div>
+                    <div class="row row-cols-2 row-cols-md-3 g-2 mt-1">
+                        {% for checkbox in field %}
+                        <div class="col">
+                            <div class="form-check">
+                                {{ checkbox.tag }}
+                                <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
                             </div>
-                            {% endfor %}
                         </div>
-                    {% elif field.name == 'price' or field.name == 'discount_price' %}
-                        <div class="input-group">
-                            <span class="input-group-text">£</span>
-                            {{ field }}
-                        </div>
+                        {% endfor %}
+                    </div>
                     {% else %}
-                        {{ field }}
+                    {{ field }}
                     {% endif %}
                     {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors }}</div>{% endif %}
                     {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}

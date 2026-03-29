@@ -1,29 +1,75 @@
 {% extends 'base.html' %}
-{% block title %}Register — Bristol Food Network{% endblock %}
+{% block title %}Join — Bristol Food Network{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 text-center">
-        <h2 class="mb-4">Join Bristol Food Network</h2>
-        <p class="text-muted mb-5">Are you a producer or a customer?</p>
-        <div class="row g-4">
-            <div class="col-6">
-                <div class="card h-100 p-4">
-                    <div class="fs-1 mb-3">🌾</div>
-                    <h4>I'm a Producer</h4>
-                    <p class="text-muted small">Farm, bakery, or food producer looking to sell locally</p>
-                    <a href="{% url 'register_producer' %}" class="btn btn-primary mt-auto">Register as Producer</a>
-                </div>
-            </div>
-            <div class="col-6">
-                <div class="card h-100 p-4">
-                    <div class="fs-1 mb-3">🛒</div>
-                    <h4>I'm a Customer</h4>
-                    <p class="text-muted small">Individual, family, community group, or restaurant</p>
-                    <a href="{% url 'register_customer' %}" class="btn btn-success mt-auto">Register as Customer</a>
-                </div>
-            </div>
+
+<style>
+  .auth-wrap { min-height: 70vh; display: flex; align-items: center; justify-content: center; }
+  .reg-wrap { width: 100%; max-width: 680px; }
+  .reg-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem; font-weight: 700;
+    color: var(--green-deep); text-align: center; margin-bottom: 8px;
+  }
+  .reg-sub { text-align: center; color: #718096; margin-bottom: 40px; }
+  .reg-card {
+    background: #fff;
+    border-radius: 24px;
+    border: 2px solid transparent;
+    padding: 40px 32px;
+    text-align: center;
+    transition: all 0.25s;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+  }
+  .reg-card:hover { border-color: var(--green-light); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(45,106,79,0.14); }
+  .reg-card.producer:hover { border-color: #52b788; }
+  .reg-card.customer:hover { border-color: #3b82f6; }
+  .reg-emoji { font-size: 3.5rem; margin-bottom: 18px; display: block; }
+  .reg-card-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--green-deep); margin-bottom: 8px; }
+  .reg-card-desc { color: #718096; font-size: 0.9rem; line-height: 1.6; margin-bottom: 24px; }
+  .reg-card-btn {
+    border-radius: 100px; padding: 10px 28px;
+    font-weight: 600; font-size: 0.9rem;
+    border: none; transition: all 0.2s;
+    display: inline-block;
+  }
+  .btn-producer { background: var(--green-deep); color: white; }
+  .btn-producer:hover { background: var(--green-mid); color: white; }
+  .btn-customer { background: #1d4ed8; color: white; }
+  .btn-customer:hover { background: #1e40af; color: white; }
+  .reg-login { text-align: center; margin-top: 28px; color: #718096; font-size: 0.9rem; }
+  .auth-link { color: var(--green-mid); font-weight: 600; text-decoration: none; }
+  .auth-link:hover { color: var(--green-deep); }
+</style>
+
+<div class="auth-wrap">
+  <div class="reg-wrap">
+    <div class="reg-title">Join Bristol Food Network</div>
+    <div class="reg-sub">Are you a producer or a customer?</div>
+
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="reg-card producer">
+          <span class="reg-emoji">🌿</span>
+          <div class="reg-card-title">I'm a Producer</div>
+          <div class="reg-card-desc">Farm, bakery, or food producer looking to sell directly to Bristol customers and earn 95% of every sale.</div>
+          <a href="{% url 'register_producer' %}" class="reg-card-btn btn-producer">Register as Producer</a>
         </div>
-        <p class="mt-4 text-muted">Already have an account? <a href="{% url 'login' %}">Login here</a></p>
+      </div>
+      <div class="col-md-6">
+        <div class="reg-card customer">
+          <span class="reg-emoji">🛒</span>
+          <div class="reg-card-title">I'm a Customer</div>
+          <div class="reg-card-desc">Individual, family, community group, or restaurant looking to buy fresh local produce directly from the source.</div>
+          <a href="{% url 'register_customer' %}" class="reg-card-btn btn-customer">Register as Customer</a>
+        </div>
+      </div>
     </div>
+
+    <div class="reg-login">Already have an account? <a href="{% url 'login' %}" class="auth-link">Sign in here</a></div>
+  </div>
 </div>
+
 {% endblock %}
