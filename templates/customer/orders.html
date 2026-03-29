@@ -51,41 +51,47 @@
   </div>
 
   <!-- Order Items -->
-  <div class="card-body p-0">
-    <table class="table table-hover mb-0">
-      <tbody>
-        {% for item in order.items.all %}
-        <tr class="align-middle">
-          <td class="ps-3">
-            <strong>{{ item.product.name }}</strong>
-            <div class="text-muted small">{{ item.producer.business_name }}</div>
-          </td>
-          <td class="text-muted">× {{ item.quantity }} {{ item.product.get_unit_display }}</td>
-          <td>£{{ item.subtotal }}</td>
-          <td class="text-end pe-3">
-            {% if order.status == 'delivered' %}
-              {% with item.product.pk as pid %}
-              {% if item.product.pk in reviewed_products %}
-                <a href="{% url 'submit_review' product_pk=item.product.pk %}"
-                   class="btn btn-sm btn-outline-warning">
-                  <i class="bi bi-pencil me-1"></i>Edit Review
-                </a>
-              {% else %}
-                <a href="{% url 'submit_review' product_pk=item.product.pk %}"
-                   class="btn btn-sm btn-success">
-                  <i class="bi bi-star-fill me-1"></i>Write Review
-                </a>
-              {% endif %}
-
-              {% endwith %}
+  <div class="card-body p-3">
+    {% for item in order.items.all %}
+    <div class="mb-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ item.product.name }}</strong>
+          × {{ item.quantity }}
+          <span class="badge
+            {% if item.producer_status == 'delivered' %}bg-success
+            {% elif item.producer_status == 'ready' %}bg-info
+            {% elif item.producer_status == 'confirmed' %}bg-primary
+            {% else %}bg-warning text-dark{% endif %} ms-1">
+            {{ item.get_producer_status_display }}
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-muted">{{ item.producer.business_name }}</span>
+          <span>£{{ item.subtotal }}</span>
+          {% if order.status == 'delivered' %}
+            {% if item.product.pk in reviewed_products %}
+              <a href="{% url 'submit_review' product_pk=item.product.pk %}"
+                 class="btn btn-sm btn-outline-warning">
+                <i class="bi bi-pencil me-1"></i>Edit Review
+              </a>
             {% else %}
-              <span class="text-muted small">{{ item.get_producer_status_display }}</span>
+              <a href="{% url 'submit_review' product_pk=item.product.pk %}"
+                 class="btn btn-sm btn-success">
+                <i class="bi bi-star-fill me-1"></i>Write Review
+              </a>
             {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          {% endif %}
+        </div>
+      </div>
+      {% if item.producer_notes %}
+      <div class="mt-1 ps-2" style="border-left: 3px solid #0d6efd;">
+        <span class="small"><strong>{{ item.producer.business_name }}:</strong> {{ item.producer_notes }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% if not forloop.last %}<hr class="my-2">{% endif %}
+    {% endfor %}
   </div>
 
   <!-- Order Footer -->
