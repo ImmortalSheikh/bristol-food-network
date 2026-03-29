@@ -60,4 +60,12 @@ urlpatterns = [
     # TC-025: Admin Commission Reports
     path('admin-panel/commission/', views.admin_commission_report, name='admin_commission_report'),
     path('admin-panel/commission/csv/', views.admin_commission_csv, name='admin_commission_csv'),
+
+    # Reviews (TC-024)
+    path('product/<int:product_pk>/review/', views.submit_review, name='submit_review'),
+    path('review/<int:pk>/edit/', views.edit_review, name='edit_review'),
+    path('review/<int:pk>/delete/', views.delete_review, name='delete_review'),
+    path('review/<int:pk>/flag/', views.flag_review, name='flag_review'),
+    path('admin-panel/reviews/', views.admin_reviews, name='admin_reviews'),
+    
 ]

@@ -452,3 +452,37 @@ class RecurringOrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x{self.quantity} — {self.recurring_order.name}"
+    
+
+
+class Review(models.Model):
+    """
+    TC-024: Customer product reviews and ratings.
+    - Only customers who have purchased and received the product can review
+    - One review per customer per product
+    - Ratings 1-5 stars
+    - Optional anonymous display
+    """
+    product     = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    customer    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    order_item  = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='reviews')
+    rating      = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    title       = models.CharField(max_length=200)
+    body        = models.TextField()
+    is_anonymous = models.BooleanField(default=False)
+    is_flagged   = models.BooleanField(default=False)   # moderation flag
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('product', 'customer')   # one review per customer per product
+        ordering = ['-created_at']
+
+    def __str__(self):
+        name = "Anonymous" if self.is_anonymous else self.customer.get_full_name() or self.customer.username
+        return f"{self.product.name} — {self.rating}★ by {name}"
+
+    @property
+    def display_name(self):
+        if self.is_anonymous:
+            return "Anonymous"
+        return self.customer.get_full_name() or self.customer.username

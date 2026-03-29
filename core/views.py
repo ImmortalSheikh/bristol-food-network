@@ -8,17 +8,22 @@ from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import date, timedelta, datetime
 import requests
+from django.db.models import Avg
+from .models import Review
 
 from .models import PaymentSettlement
 from .models import (
     User, Product, Category, Cart, CartItem,
     Order, OrderItem, ProducerProfile, CustomerProfile, OrderStatusHistory,
-    RecurringOrder, RecurringOrderItem
+    RecurringOrder, RecurringOrderItem, Review
 )
 from .forms import (
     ProducerRegistrationForm, CustomerRegistrationForm,
     LoginForm, ProductForm, CartItemForm, RecurringOrderForm
 )
+
+
+
 
 # ─────────────────────────────────────────────────────────────
 # DECORATORS
@@ -212,10 +217,30 @@ def product_detail(request, pk):
         Product.objects.select_related('producer', 'category').prefetch_related('product_allergens'),
         pk=pk
     )
+
+
+
+    reviews    = product.reviews.filter(is_flagged=False).select_related('customer')
+    avg_rating = product.reviews.aggregate(avg=Avg('rating'))['avg'] or 0
+    user_review = None
+    can_review  = False
+
+    if request.user.is_authenticated and not request.user.is_producer():
+        user_review = Review.objects.filter(product=product, customer=request.user).first()
+        can_review  = not user_review and OrderItem.objects.filter(
+            order__customer=request.user,
+            product=product,
+            order__status='delivered',
+        ).exists()
+
     return render(request, 'marketplace/product_detail.html', {
         'product': product,
         'allergens': product.product_allergens.all(),
         'form': CartItemForm(initial={'quantity': 1}),
+        'reviews':    reviews,
+        'avg_rating': round(avg_rating, 1),
+        'user_review': user_review,
+        'can_review':  can_review,
     })
 
 
@@ -510,13 +535,19 @@ def customer_orders(request):
         except ValueError:
             pass
 
+    # Get all product IDs the customer has already reviewed
+    # so we can show "Edit Review" instead of "Write Review"
+    reviewed_product_ids = set(
+        Review.objects.filter(customer=request.user).values_list('product_id', flat=True)
+    )
+
     return render(request, 'customer/orders.html', {
         'orders': orders,
         'status_filter': status_filter,
         'date_from': date_from,
         'date_to': date_to,
+        'reviewed_products': reviewed_product_ids,
     })
-
 
 # ─────────────────────────────────────────────────────────────
 # PRODUCER VIEWS
@@ -1155,3 +1186,181 @@ def _save_recurring_items(request, ro):
                 )
         except Exception:
             continue
+
+# ─────────────────────────────────────────────────────────────
+# TC-024: REVIEWS & RATINGS
+# ─────────────────────────────────────────────────────────────
+
+@customer_required
+def submit_review(request, product_pk):
+    """
+    TC-024: Submit a review for a product.
+    - Customer must have a delivered order containing this product
+    - One review per customer per product (enforced at model + view level)
+    - Anonymous option honoured
+    """
+    from .models import Review
+
+    product = get_object_or_404(Product, pk=product_pk)
+
+    # Check customer has a delivered order containing this product
+    eligible_items = OrderItem.objects.filter(
+        order__customer=request.user,
+        product=product,
+        order__status='delivered',
+    )
+
+    if not eligible_items.exists():
+        messages.error(
+            request,
+            'You can only review products from delivered orders.'
+        )
+        return redirect('product_detail', pk=product_pk)
+
+    # Check they haven't already reviewed this product
+    existing_review = Review.objects.filter(
+        product=product,
+        customer=request.user
+    ).first()
+
+    if existing_review:
+        messages.warning(
+            request,
+            'You have already reviewed this product. You can edit your existing review below.'
+        )
+        return redirect('edit_review', pk=existing_review.pk)
+
+    if request.method == 'POST':
+        rating_str = request.POST.get('rating', '').strip()
+        rating = int(rating_str) if rating_str else 0
+        title        = request.POST.get('title', '').strip()
+        body         = request.POST.get('body', '').strip()
+        is_anonymous = request.POST.get('is_anonymous') == 'on'
+
+        errors = []
+        if not (1 <= rating <= 5):
+            errors.append('Please select a rating between 1 and 5 stars.')
+        if not title:
+            errors.append('Please enter a review title.')
+        if not body:
+            errors.append('Please enter your review.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            Review.objects.create(
+                product=product,
+                customer=request.user,
+                order_item=eligible_items.first(),
+                rating=rating,
+                title=title,
+                body=body,
+                is_anonymous=is_anonymous,
+            )
+            messages.success(request, 'Your review has been submitted. Thank you!')
+            return redirect('product_detail', pk=product_pk)
+
+    return render(request, 'reviews/submit_review.html', {
+        'product':        product,
+        'eligible_items': eligible_items,
+    })
+
+
+@customer_required
+def edit_review(request, pk):
+    """TC-024: Edit an existing review — only the author can edit."""
+    from .models import Review
+
+    review = get_object_or_404(Review, pk=pk, customer=request.user)
+
+    if request.method == 'POST':
+        rating       = int(request.POST.get('rating', 0))
+        title        = request.POST.get('title', '').strip()
+        body         = request.POST.get('body', '').strip()
+        is_anonymous = request.POST.get('is_anonymous') == 'on'
+
+        errors = []
+        if not (1 <= rating <= 5):
+            errors.append('Please select a rating between 1 and 5 stars.')
+        if not title:
+            errors.append('Please enter a review title.')
+        if not body:
+            errors.append('Please enter your review.')
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            review.rating       = rating
+            review.title        = title
+            review.body         = body
+            review.is_anonymous = is_anonymous
+            review.save()
+            messages.success(request, 'Your review has been updated.')
+            return redirect('product_detail', pk=review.product.pk)
+
+    return render(request, 'reviews/edit_review.html', {'review': review})
+
+
+@customer_required
+def delete_review(request, pk):
+    """TC-024: Delete a review — only the author can delete."""
+    from .models import Review
+
+    review = get_object_or_404(Review, pk=pk, customer=request.user)
+    product_pk = review.product.pk
+
+    if request.method == 'POST':
+        review.delete()
+        messages.success(request, 'Your review has been deleted.')
+        return redirect('product_detail', pk=product_pk)
+
+    return render(request, 'reviews/delete_review.html', {'review': review})
+
+
+@login_required
+def flag_review(request, pk):
+    """TC-024: Flag a review for moderation (any logged in user)."""
+    from .models import Review
+
+    review = get_object_or_404(Review, pk=pk)
+
+    if request.method == 'POST':
+        review.is_flagged = True
+        review.save()
+        messages.success(request, 'Review has been flagged for moderation.')
+        return redirect('product_detail', pk=review.product.pk)
+
+    return redirect('product_detail', pk=review.product.pk)
+
+
+def admin_reviews(request):
+    """TC-024: Admin view — moderate flagged reviews."""
+    from .models import Review
+
+    if not request.user.is_authenticated or request.user.role != 'admin':
+        raise PermissionDenied
+
+    flagged_reviews = Review.objects.filter(is_flagged=True).select_related('product', 'customer')
+    all_reviews     = Review.objects.all().select_related('product', 'customer').order_by('-created_at')
+
+    if request.method == 'POST':
+        action    = request.POST.get('action')
+        review_pk = request.POST.get('review_pk')
+        review    = get_object_or_404(Review, pk=review_pk)
+
+        if action == 'unflag':
+            review.is_flagged = False
+            review.save()
+            messages.success(request, f'Review unflagged.')
+        elif action == 'delete':
+            review.delete()
+            messages.success(request, 'Review deleted.')
+
+        return redirect('admin_reviews')
+
+    return render(request, 'reviews/admin_reviews.html', {
+        'flagged_reviews': flagged_reviews,
+        'all_reviews':     all_reviews,
+    })
