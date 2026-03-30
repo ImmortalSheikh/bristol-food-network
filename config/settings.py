@@ -36,7 +36,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # picks up our templates/ folder
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -53,7 +53,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # ── Database ───────────────────────────────────────────────────────────────────
-# SQLite locally, PostgreSQL inside Docker (when POSTGRES_HOST env var is set)
 if os.environ.get('POSTGRES_HOST'):
     DATABASES = {
         'default': {
@@ -72,6 +71,17 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+# ── Redis Cache ────────────────────────────────────────────────────────────────
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://redis:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
 
 # ── Custom User Model ──────────────────────────────────────────────────────────
 AUTH_USER_MODEL = 'core.User'

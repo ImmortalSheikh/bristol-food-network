@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q, Avg
 from django.core.exceptions import PermissionDenied
+from django.core.cache import cache
 from decimal import Decimal
 from datetime import date, timedelta, datetime
 import requests
@@ -28,16 +29,22 @@ from .forms import (
 # ─────────────────────────────────────────────────────────────
 
 def _get_postcode_coords(postcode):
-    """Fetch lat/lng for a UK postcode from postcodes.io (free, no API key)."""
+    """Fetch lat/lng for a UK postcode from postcodes.io. Results cached in Redis for 24h."""
+    postcode_clean = postcode.strip().replace(' ', '').upper()
+    cache_key = f"postcode_{postcode_clean}"
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
     try:
-        postcode_clean = postcode.strip().replace(' ', '')
         response = requests.get(
             f"https://api.postcodes.io/postcodes/{postcode_clean}",
-            timeout=2  # kept short to avoid gunicorn worker timeouts
+            timeout=2
         )
         if response.status_code == 200:
             data = response.json()
-            return data['result']['latitude'], data['result']['longitude']
+            coords = (data['result']['latitude'], data['result']['longitude'])
+            cache.set(cache_key, coords, timeout=86400)  # cache 24 hours
+            return coords
     except Exception:
         pass
     return None, None
