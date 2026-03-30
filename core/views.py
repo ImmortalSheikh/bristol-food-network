@@ -3,24 +3,23 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Avg
 from django.core.exceptions import PermissionDenied
 from decimal import Decimal
 from datetime import date, timedelta, datetime
 import requests
 import math
-from django.db.models import Avg
-from .models import Review
 
-from .models import PaymentSettlement
 from .models import (
     User, Product, Category, Cart, CartItem,
     Order, OrderItem, ProducerProfile, CustomerProfile, OrderStatusHistory,
-    RecurringOrder, RecurringOrderItem, Review
+    RecurringOrder, RecurringOrderItem, Review,
+    PaymentSettlement, Recipe, FarmStory, FavouriteRecipe
 )
 from .forms import (
     ProducerRegistrationForm, CustomerRegistrationForm,
-    LoginForm, ProductForm, CartItemForm, RecurringOrderForm
+    LoginForm, ProductForm, CartItemForm, RecurringOrderForm,
+    RecipeForm, FarmStoryForm
 )
 
 
@@ -187,19 +186,20 @@ def logout_view(request):
 # ─────────────────────────────────────────────────────────────
 
 def home(request):
-    categories       = Category.objects.all()
+    categories = Category.objects.all()
     featured_products = Product.objects.filter(
         availability__in=['available', 'in_season']
     ).select_related('producer', 'category').order_by('?')[:8]
-    total_products   = Product.objects.filter(
+    total_products = Product.objects.filter(
         availability__in=['available', 'in_season']
     ).count()
 
     return render(request, 'home.html', {
-        'categories':        categories,
+        'categories': categories,
         'featured_products': featured_products,
-        'total_products':    total_products,
+        'total_products': total_products,
     })
+
 
 # ─────────────────────────────────────────────────────────────
 # MARKETPLACE / PRODUCTS
@@ -242,7 +242,10 @@ def marketplace(request):
 
 def product_detail(request, pk):
     product = get_object_or_404(
-        Product.objects.select_related('producer', 'category').prefetch_related('product_allergens'),
+        Product.objects.select_related('producer', 'category').prefetch_related(
+            'product_allergens',
+            'recipes'
+        ),
         pk=pk
     )
 
@@ -270,6 +273,14 @@ def product_detail(request, pk):
             order__status='delivered',
         ).exists()
 
+    # TC-020
+    producer_stories = FarmStory.objects.filter(
+        producer=product.producer,
+        is_approved=True
+    ).order_by('-created_at')[:3]
+
+    product_recipes = product.recipes.filter(is_approved=True).order_by('-created_at')
+
     return render(request, 'marketplace/product_detail.html', {
         'product': product,
         'allergens': product.product_allergens.all(),
@@ -279,6 +290,8 @@ def product_detail(request, pk):
         'avg_rating': round(avg_rating, 1),
         'user_review': user_review,
         'can_review': can_review,
+        'recipes': product_recipes,
+        'producer_stories': producer_stories,
     })
 
 
@@ -383,7 +396,7 @@ def update_cart_item(request, item_pk):
     item = get_object_or_404(CartItem, pk=item_pk, cart__customer=request.user)
 
     try:
-        qty = Decimal(request.POST.get('quantity', '0'))
+        qty = int(request.POST.get('quantity', '0'))
     except Exception:
         messages.error(request, 'Invalid quantity.')
         return redirect('cart')
@@ -507,7 +520,7 @@ def checkout(request):
                 subtotal=cart_item.subtotal,
             )
             cart_item.product.stock_quantity = max(
-                Decimal('0'),
+                0,
                 cart_item.product.stock_quantity - cart_item.quantity
             )
             cart_item.product.save(update_fields=['stock_quantity'])
@@ -551,7 +564,6 @@ def order_confirmation(request, pk):
 
     is_bulk_order = (order.customer.role == 'community_group')
 
-    # TC-013: Calculate food miles per producer
     customer_postcode = order.delivery_postcode
     seen_producers = {}
     total_food_miles = 0
@@ -582,8 +594,6 @@ def order_confirmation(request, pk):
 
 @customer_required
 def customer_orders(request):
-    from datetime import datetime
-
     status_filter = request.GET.get('status', '').strip()
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
@@ -617,6 +627,34 @@ def customer_orders(request):
         'date_from': date_from,
         'date_to': date_to,
         'reviewed_products': reviewed_product_ids,
+    })
+
+
+@customer_required
+def toggle_favourite_recipe(request, recipe_pk):
+    recipe = get_object_or_404(Recipe, pk=recipe_pk, is_approved=True)
+    favourite, created = FavouriteRecipe.objects.get_or_create(
+        customer=request.user,
+        recipe=recipe
+    )
+
+    if not created:
+        favourite.delete()
+        messages.info(request, 'Recipe removed from favourites.')
+    else:
+        messages.success(request, 'Recipe saved to favourites.')
+
+    return redirect(request.META.get('HTTP_REFERER', 'marketplace'))
+
+
+@customer_required
+def favourite_recipes(request):
+    favourites = FavouriteRecipe.objects.filter(
+        customer=request.user
+    ).select_related('recipe', 'recipe__producer').order_by('-created_at')
+
+    return render(request, 'customer/favourite_recipes.html', {
+        'favourites': favourites,
     })
 
 
@@ -782,6 +820,121 @@ def producer_update_order_status(request, item_pk):
             messages.error(request, 'Status can only move forward in the order lifecycle.')
 
     return redirect('producer_orders')
+
+
+# ─────────────────────────────────────────────────────────────
+# TC-020: PRODUCER CONTENT
+# ─────────────────────────────────────────────────────────────
+
+@producer_required
+def producer_content(request):
+    profile = get_object_or_404(ProducerProfile, user=request.user)
+    recipes = Recipe.objects.filter(producer=profile).prefetch_related('products').order_by('-created_at')
+    stories = FarmStory.objects.filter(producer=profile).order_by('-created_at')
+
+    return render(request, 'producer/content.html', {
+        'profile': profile,
+        'recipes': recipes,
+        'stories': stories,
+    })
+
+
+@producer_required
+def recipe_create(request):
+    profile = get_object_or_404(ProducerProfile, user=request.user)
+
+    if request.method == 'POST':
+        form = RecipeForm(request.POST, request.FILES)
+    else:
+        form = RecipeForm()
+
+    form.fields['products'].queryset = Product.objects.filter(producer=profile).order_by('name')
+
+    if request.method == 'POST' and form.is_valid():
+        recipe = form.save(commit=False)
+        recipe.producer = profile
+        recipe.save()
+        form.save_m2m()
+        messages.success(request, 'Recipe created successfully.')
+        return redirect('producer_content')
+
+    return render(request, 'producer/recipe_form.html', {
+        'form': form,
+        'action': 'Add Recipe',
+    })
+
+
+@producer_required
+def recipe_edit(request, pk):
+    profile = get_object_or_404(ProducerProfile, user=request.user)
+    recipe = get_object_or_404(Recipe, pk=pk, producer=profile)
+
+    if request.method == 'POST':
+        form = RecipeForm(request.POST, request.FILES, instance=recipe)
+    else:
+        form = RecipeForm(instance=recipe)
+
+    form.fields['products'].queryset = Product.objects.filter(producer=profile).order_by('name')
+
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Recipe updated successfully.')
+        return redirect('producer_content')
+
+    return render(request, 'producer/recipe_form.html', {
+        'form': form,
+        'action': 'Edit Recipe',
+        'recipe': recipe,
+    })
+
+
+@producer_required
+def farm_story_create(request):
+    profile = get_object_or_404(ProducerProfile, user=request.user)
+
+    if request.method == 'POST':
+        form = FarmStoryForm(request.POST, request.FILES)
+        if form.is_valid():
+            story = form.save(commit=False)
+            story.producer = profile
+            story.save()
+            messages.success(request, 'Farm story published successfully.')
+            return redirect('producer_content')
+    else:
+        form = FarmStoryForm()
+
+    return render(request, 'producer/farm_story_form.html', {
+        'form': form,
+        'action': 'Add Farm Story',
+    })
+
+
+@producer_required
+def farm_story_edit(request, pk):
+    profile = get_object_or_404(ProducerProfile, user=request.user)
+    story = get_object_or_404(FarmStory, pk=pk, producer=profile)
+
+    if request.method == 'POST':
+        form = FarmStoryForm(request.POST, request.FILES, instance=story)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Farm story updated successfully.')
+            return redirect('producer_content')
+    else:
+        form = FarmStoryForm(instance=story)
+
+    return render(request, 'producer/farm_story_form.html', {
+        'form': form,
+        'action': 'Edit Farm Story',
+        'story': story,
+    })
+
+
+def story_detail(request, pk):
+    story = get_object_or_404(FarmStory.objects.select_related('producer'), pk=pk)
+    return render(request, 'producer/story_detail.html', {
+        'story': story,
+    })
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1214,7 +1367,7 @@ def recurring_order_generate(request, pk):
             unit_price=price,
             subtotal=sub,
         )
-        t_item.product.stock_quantity = max(Decimal('0'), t_item.product.stock_quantity - t_item.quantity)
+        t_item.product.stock_quantity = max(0, t_item.product.stock_quantity - t_item.quantity)
         t_item.product.save(update_fields=['stock_quantity'])
 
     order.total_amount = total
@@ -1244,7 +1397,7 @@ def _save_recurring_items(request, ro):
     for i, pid in enumerate(product_ids):
         try:
             product = Product.objects.get(pk=int(pid))
-            qty = Decimal(quantities[i]) if i < len(quantities) else Decimal('1')
+            qty = int(quantities[i]) if i < len(quantities) else 1
             note = notes_list[i] if i < len(notes_list) else ''
             if qty > 0:
                 RecurringOrderItem.objects.update_or_create(
@@ -1376,10 +1529,8 @@ def flag_review(request, pk):
     return redirect('product_detail', pk=review.product.pk)
 
 
+@admin_required
 def admin_reviews(request):
-    if not request.user.is_authenticated or request.user.role != 'admin':
-        raise PermissionDenied
-
     flagged_reviews = Review.objects.filter(is_flagged=True).select_related('product', 'customer')
     all_reviews = Review.objects.all().select_related('product', 'customer').order_by('-created_at')
 

@@ -28,6 +28,8 @@ urlpatterns = [
 
     # Customer
     path('my-orders/', views.customer_orders, name='customer_orders'),
+    path('recipes/<int:recipe_pk>/favourite/', views.toggle_favourite_recipe, name='toggle_favourite_recipe'),
+    path('my-favourite-recipes/', views.favourite_recipes, name='favourite_recipes'),
 
     # Restaurant — recurring orders
     path('restaurant/recurring-orders/', views.recurring_orders_list, name='recurring_orders_list'),
@@ -45,6 +47,14 @@ urlpatterns = [
     path('producer/products/<int:pk>/edit/', views.product_edit, name='product_edit'),
     path('producer/orders/', views.producer_orders, name='producer_orders'),
     path('producer/orders/<int:item_pk>/status/', views.producer_update_order_status, name='producer_update_order_status'),
+
+    # TC-020: Recipes & Farm Stories
+    path('producer/content/', views.producer_content, name='producer_content'),
+    path('producer/content/recipes/add/', views.recipe_create, name='recipe_create'),
+    path('producer/content/recipes/<int:pk>/edit/', views.recipe_edit, name='edit_recipe'),
+    path('producer/content/stories/add/', views.farm_story_create, name='farm_story_create'),
+    path('producer/content/stories/<int:pk>/edit/', views.farm_story_edit, name='edit_story'),
+    path('stories/<int:pk>/', views.story_detail, name='story_detail'),
 
     # TC-012: Producer Payment Settlements
     path('producer/payments/', views.producer_payments, name='producer_payments'),
@@ -67,5 +77,4 @@ urlpatterns = [
     path('review/<int:pk>/delete/', views.delete_review, name='delete_review'),
     path('review/<int:pk>/flag/', views.flag_review, name='flag_review'),
     path('admin-panel/reviews/', views.admin_reviews, name='admin_reviews'),
-    
 ]

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}{{ story.title }} — Bristol Food Network{% endblock %}
+{% block content %}
+
+<style>
+  .story-shell {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .story-card {
+    background: #fff;
+    border: 1px solid #e8f0eb;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.05);
+  }
+  .story-body {
+    padding: 30px;
+  }
+  .story-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--green-deep);
+  }
+  .story-meta {
+    color: #718096;
+    font-size: 0.9rem;
+    margin-bottom: 18px;
+  }
+  .story-content {
+    color: #334155;
+    font-size: 1rem;
+    line-height: 1.8;
+    white-space: pre-line;
+  }
+  .story-image {
+    width: 100%;
+    max-height: 420px;
+    object-fit: cover;
+    display: block;
+  }
+</style>
+
+<div class="story-shell">
+  <div class="mb-3">
+    <a href="{% url 'marketplace' %}" class="text-decoration-none">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+
+  <div class="story-card">
+    {% if story.image %}
+      <img src="{{ story.image.url }}" alt="{{ story.title }}" class="story-image">
+    {% endif %}
+
+    <div class="story-body">
+      <h1 class="story-title mb-2">{{ story.title }}</h1>
+      <div class="story-meta">
+        {{ story.producer.business_name }} · {{ story.created_at|date:"d M Y" }}
+      </div>
+
+      <div class="story-content">{{ story.content }}</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -5,8 +5,14 @@
 <style>
   .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
   .page-sub { color:#718096; font-size:0.9rem; }
-  .btn-add { background:var(--green-deep);color:white;border:none;border-radius:100px;padding:10px 24px;font-size:0.9rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all 0.2s; }
-  .btn-add:hover { background:var(--green-mid);color:white;transform:translateY(-1px);box-shadow:0 4px 16px rgba(45,106,79,0.25); }
+  .btn-add-product {
+    background: var(--green-deep); color: white;
+    border: none; border-radius: 100px;
+    padding: 10px 24px; font-size: 0.9rem; font-weight: 600;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+    transition: all 0.2s;
+  }
+  .btn-add-product:hover { background: var(--green-mid); color: white; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(45,106,79,0.25); }
   .stat-card { background:#fff;border-radius:18px;padding:24px 20px;border:2px solid transparent;box-shadow:0 2px 12px rgba(0,0,0,0.04);transition:all 0.2s; }
   .stat-card:hover { transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08); }
   .stat-num { font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;margin-bottom:4px; }
@@ -32,14 +38,19 @@
   .btn-edit-mini:hover { border-color:var(--green-light);color:var(--green-deep); }
 </style>
 
-<div class="d-flex justify-content-between align-items-start mb-4">
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
   <div>
     <h1 class="page-title mb-1">Dashboard</h1>
     <div class="page-sub"><i class="bi bi-shop me-1"></i>{{ profile.business_name }}</div>
   </div>
-  <a href="{% url 'product_create' %}" class="btn-add">
-    <i class="bi bi-plus-circle-fill"></i> Add New Product
-  </a>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'producer_content' %}" class="btn btn-outline-success">
+      <i class="bi bi-journal-richtext me-1"></i> Recipes & Farm Stories
+    </a>
+    <a href="{% url 'product_create' %}" class="btn-add-product">
+      <i class="bi bi-plus-circle-fill"></i> Add New Product
+    </a>
+  </div>
 </div>
 
 <!-- Stats Row 1 -->
@@ -98,7 +109,6 @@
   </div>
 </div>
 
-<!-- Best Sellers -->
 {% if best_sellers %}
 <div class="data-card">
   <div class="data-card-header"><i class="bi bi-bar-chart-fill me-2"></i>Best Selling Products</div>
@@ -117,7 +127,6 @@
 </div>
 {% endif %}
 
-<!-- Incoming Orders -->
 <div class="section-title"><i class="bi bi-bag-check" style="color:var(--green-light);"></i>Incoming Orders</div>
 {% if pending_orders %}
 <div class="data-card">
@@ -146,7 +155,6 @@
 </div>
 {% endif %}
 
-<!-- Products Grid -->
 <div class="section-title"><i class="bi bi-box-seam" style="color:var(--green-light);"></i>Your Products</div>
 <div class="row g-3">
   {% for product in products|slice:":6" %}

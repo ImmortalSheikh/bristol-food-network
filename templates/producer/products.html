@@ -52,15 +52,19 @@
   .empty-state { text-align: center; padding: 60px 20px; }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
   <h1 class="page-title mb-0">My Products</h1>
-  <a href="{% url 'product_create' %}" class="btn-add-product">
-    <i class="bi bi-plus-circle-fill"></i> Add New Product
-  </a>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'producer_content' %}" class="btn btn-outline-success">
+      <i class="bi bi-journal-richtext me-1"></i> Recipes & Farm Stories
+    </a>
+    <a href="{% url 'product_create' %}" class="btn-add-product">
+      <i class="bi bi-plus-circle-fill"></i> Add New Product
+    </a>
+  </div>
 </div>
 
 {% if products %}
-<!-- Summary Bar -->
 <div class="summary-bar">
   <div class="summary-pill">
     <div>
@@ -146,9 +150,14 @@
     <div style="font-size:3.5rem;margin-bottom:16px;">📦</div>
     <h4 style="color:var(--green-deep);">No products yet</h4>
     <p class="text-muted mb-4">Start listing your produce to reach Bristol customers</p>
-    <a href="{% url 'product_create' %}" class="btn-add-product" style="display:inline-flex;">
-      <i class="bi bi-plus-circle-fill"></i> Add Your First Product
-    </a>
+    <div class="d-flex gap-2 justify-content-center flex-wrap">
+      <a href="{% url 'producer_content' %}" class="btn btn-outline-success">
+        <i class="bi bi-journal-richtext me-1"></i> Recipes & Farm Stories
+      </a>
+      <a href="{% url 'product_create' %}" class="btn-add-product" style="display:inline-flex;">
+        <i class="bi bi-plus-circle-fill"></i> Add Your First Product
+      </a>
+    </div>
   </div>
 </div>
 {% endif %}

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Favourite Recipes — Bristol Food Network{% endblock %}
+{% block content %}
+
+<style>
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    color: var(--green-deep);
+    font-weight: 700;
+  }
+  .recipe-card {
+    background: #fff;
+    border: 1px solid #e8f0eb;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    height: 100%;
+  }
+  .recipe-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+  }
+  .recipe-body {
+    padding: 18px;
+  }
+  .recipe-title {
+    font-weight: 700;
+    color: var(--green-deep);
+    font-size: 1rem;
+    margin-bottom: 6px;
+  }
+  .recipe-meta {
+    color: #718096;
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+  }
+  .tag-pill {
+    display: inline-block;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 100px;
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .empty-card {
+    background: #fff;
+    border: 1px solid #e8f0eb;
+    border-radius: 22px;
+    padding: 50px 20px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="page-title mb-1">Favourite Recipes</h1>
+    <div class="text-muted">Saved recipes you can come back to later.</div>
+  </div>
+</div>
+
+{% if favourites %}
+  <div class="row g-4">
+    {% for favourite in favourites %}
+      <div class="col-md-6 col-lg-4">
+        <div class="recipe-card">
+          {% if favourite.recipe.image %}
+            <img src="{{ favourite.recipe.image.url }}" alt="{{ favourite.recipe.title }}">
+          {% else %}
+            <div class="d-flex align-items-center justify-content-center" style="height:220px; background:#f8fafc; font-size:3rem;">🥘</div>
+          {% endif %}
+
+          <div class="recipe-body">
+            <div class="recipe-title">{{ favourite.recipe.title }}</div>
+            <div class="recipe-meta">
+              {{ favourite.recipe.producer.business_name }}
+            </div>
+
+            {% if favourite.recipe.seasonal_tag %}
+              <div class="tag-pill">{{ favourite.recipe.seasonal_tag }}</div>
+            {% endif %}
+
+            {% if favourite.recipe.description %}
+              <p class="text-muted small">{{ favourite.recipe.description|truncatewords:18 }}</p>
+            {% endif %}
+
+            <details class="mt-2">
+              <summary class="text-primary">View recipe</summary>
+              <div class="mt-2 small">
+                <strong>Ingredients</strong>
+                <p>{{ favourite.recipe.ingredients }}</p>
+
+                <strong>Instructions</strong>
+                <p>{{ favourite.recipe.instructions }}</p>
+
+                {% if favourite.recipe.storage_guidance %}
+                  <strong>Storage Guidance</strong>
+                  <p>{{ favourite.recipe.storage_guidance }}</p>
+                {% endif %}
+              </div>
+            </details>
+
+            <form method="post" action="{% url 'toggle_favourite_recipe' favourite.recipe.pk %}" class="mt-3">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-heartbreak me-1"></i>Remove from Favourites
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-card">
+    <div style="font-size: 3rem;">💚</div>
+    <h4 class="mt-3" style="color: var(--green-deep);">No favourite recipes yet</h4>
+    <p class="text-muted mb-4">Save recipes from product pages and they will appear here.</p>
+    <a href="{% url 'marketplace' %}" class="btn btn-success">Browse Products</a>
+  </div>
+{% endif %}
+
+{% endblock %}

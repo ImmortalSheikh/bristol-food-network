@@ -50,10 +50,12 @@
                 {% if product.best_before_date %}<tr><th>Best Before</th><td>{{ product.best_before_date }}</td></tr>{% endif %}
                 {% if product.season_start_month %}<tr><th>Season</th><td>Month {{ product.season_start_month }} – {{ product.season_end_month }}</td></tr>{% endif %}
                 <tr><th>Stock</th><td>{{ product.stock_quantity }} {{ product.get_unit_display }} available</td></tr>
+                {% if food_miles %}
+                <tr><th>Food Miles</th><td>{{ food_miles }} miles</td></tr>
+                {% endif %}
             </tbody>
         </table>
 
-        <!-- Allergen Warning (prominent, as required by TC-015) -->
         <div class="mb-3">
             {% if allergens %}
             <div class="alert alert-danger d-flex align-items-start" role="alert">
@@ -74,14 +76,13 @@
             {% endif %}
         </div>
 
-        <!-- Add to Cart -->
         {% if user.is_authenticated and not user.is_producer %}
             {% if product.is_available %}
             <form method="post" action="{% url 'add_to_cart' product.pk %}" class="d-flex gap-2 align-items-end">
                 {% csrf_token %}
                 <div>
                     <label class="form-label fw-semibold">Quantity ({{ product.get_unit_display }})</label>
-                    <input type="number" name="quantity" value="1" min="0.1" step="0.1"
+                    <input type="number" name="quantity" value="1" min="1" step="1"
                            class="form-control" style="width:100px;">
                 </div>
                 <button type="submit" class="btn btn-primary btn-lg">
@@ -99,10 +100,86 @@
     </div>
 </div>
 
+<hr class="my-4">
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <h4 class="mb-3">Recipe Suggestions</h4>
+        {% if recipes %}
+            {% for recipe in recipes %}
+            <div class="card shadow-sm mb-3 border-0">
+                {% if recipe.image %}
+                    <img src="{{ recipe.image.url }}" class="card-img-top" style="max-height:220px; object-fit:cover;" alt="{{ recipe.title }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title fw-bold">{{ recipe.title }}</h5>
+
+                    {% if recipe.seasonal_tag %}
+                        <span class="badge bg-success mb-2">{{ recipe.seasonal_tag }}</span>
+                    {% endif %}
+
+                    {% if recipe.description %}
+                        <p class="text-muted small">{{ recipe.description }}</p>
+                    {% endif %}
+
+                    <details class="mt-2">
+                        <summary class="text-primary">View Details</summary>
+                        <div class="mt-2">
+                            <strong>Ingredients:</strong>
+                            <p class="small">{{ recipe.ingredients }}</p>
+
+                            <strong>Instructions:</strong>
+                            <p class="small">{{ recipe.instructions }}</p>
+
+                            {% if recipe.storage_guidance %}
+                                <strong>Storage Guidance:</strong>
+                                <p class="small">{{ recipe.storage_guidance }}</p>
+                            {% endif %}
+                        </div>
+                    </details>
+
+                    {% if user.is_authenticated and not user.is_producer %}
+                    <form method="post" action="{% url 'toggle_favourite_recipe' recipe.pk %}" class="mt-3">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-heart me-1"></i> Save Recipe
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">No recipes linked yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="col-md-6">
+        <h4 class="mb-3">From the Farm</h4>
+        {% if producer_stories %}
+            {% for story in producer_stories %}
+            <div class="card shadow-sm mb-3 border-0">
+                {% if story.image %}
+                    <img src="{{ story.image.url }}" class="card-img-top" style="max-height:220px; object-fit:cover;" alt="{{ story.title }}">
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title fw-bold">{{ story.title }}</h5>
+                    <p class="text-muted small">{{ story.content|truncatewords:25 }}</p>
+                    <small class="text-secondary d-block mb-3">{{ story.created_at|date:"d M Y" }}</small>
+                    <a href="{% url 'story_detail' story.pk %}" class="text-primary small">
+                        Read more →
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">No farm stories available yet.</p>
+        {% endif %}
+    </div>
+</div>
+
 {% load static %}
 
-{# ── Average Rating Summary ── #}
-{% with reviews=product.reviews.all %}
 <div class="card border-0 shadow-sm mt-4">
   <div class="card-header bg-white border-bottom">
     <h5 class="mb-0"><i class="bi bi-star-fill text-warning me-2"></i>Customer Reviews</h5>
@@ -110,7 +187,6 @@
   <div class="card-body">
 
     {% if reviews %}
-      {# Rating Summary Bar #}
       <div class="row align-items-center mb-4">
         <div class="col-auto text-center">
           <div class="display-4 fw-bold text-warning">{{ avg_rating|floatformat:1 }}</div>
@@ -121,23 +197,8 @@
           </div>
           <div class="text-muted small">{{ reviews.count }} review{{ reviews.count|pluralize }}</div>
         </div>
-        <div class="col">
-          {% for star in "54321" %}
-            {% with val=forloop.revcounter %}
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <span class="text-muted small" style="width:40px;">{{ forloop.counter|add:"-1"|add:"5"|add:"-4" }} ★</span>
-              {% comment %}simple star label{% endcomment %}
-              <span class="text-warning small">{% for x in "12345" %}{% if forloop.counter <= forloop.parentloop.counter|add:"0" %}★{% else %}☆{% endif %}{% endfor %}</span>
-              <div class="progress flex-grow-1" style="height:8px;">
-                <div class="progress-bar bg-warning" style="width:{{ star_percentages|default:'0' }}%"></div>
-              </div>
-            </div>
-            {% endwith %}
-          {% endfor %}
-        </div>
       </div>
 
-      {# Write Review Button #}
       {% if user.is_authenticated and not user.is_producer %}
         {% if can_review %}
           <a href="{% url 'submit_review' product_pk=product.pk %}" class="btn btn-success mb-4">
@@ -150,7 +211,6 @@
         {% endif %}
       {% endif %}
 
-      {# Individual Reviews #}
       {% for review in reviews %}
         {% if not review.is_flagged %}
         <div class="border rounded p-3 mb-3 bg-light">
@@ -171,7 +231,6 @@
           </div>
           <p class="mt-2 mb-1">{{ review.body }}</p>
           <div class="d-flex gap-2 mt-2">
-            {# Flag button for other users #}
             {% if user.is_authenticated and user != review.customer %}
               <form method="post" action="{% url 'flag_review' pk=review.pk %}" class="d-inline">
                 {% csrf_token %}
@@ -180,7 +239,6 @@
                 </button>
               </form>
             {% endif %}
-            {# Edit/Delete for the author #}
             {% if user == review.customer %}
               <a href="{% url 'edit_review' pk=review.pk %}" class="btn btn-sm btn-outline-warning">
                 <i class="bi bi-pencil me-1"></i>Edit
@@ -208,6 +266,5 @@
 
   </div>
 </div>
-{% endwith %}
 
 {% endblock %}

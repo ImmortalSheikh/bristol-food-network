@@ -26,7 +26,7 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
-    
+
     def save(self, *args, **kwargs):
         # Ensure Django superusers always behave like your app "admin"
         if self.is_superuser:
@@ -130,8 +130,11 @@ class Product(models.Model):
         validators=[MinValueValidator(Decimal('0.01'))]
     )
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default='each')
-    stock_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    low_stock_threshold = models.DecimalField(max_digits=10, decimal_places=2, default=10)
+
+    # whole numbers only
+    stock_quantity = models.PositiveIntegerField(default=0)
+    low_stock_threshold = models.PositiveIntegerField(default=10)
+
     availability = models.CharField(max_length=20, choices=AVAILABILITY_CHOICES, default='available')
     is_organic = models.BooleanField(default=False)
     harvest_date = models.DateField(null=True, blank=True)
@@ -206,8 +209,7 @@ class Order(models.Model):
     commission_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     payment_reference = models.CharField(max_length=100, blank=True)
     payment_status = models.CharField(max_length=20, default='pending')
-    payment_status = models.CharField(max_length=20, default='pending')
-    recurring_order = models.ForeignKey(         
+    recurring_order = models.ForeignKey(
         'RecurringOrder',
         on_delete=models.SET_NULL,
         null=True,
@@ -222,16 +224,6 @@ class Order(models.Model):
         return self.commission_amount
 
     def sync_status_from_items(self, save=True):
-        """
-        Aggregate Order.status from OrderItem.producer_status.
-        Rules:
-          - If all items are cancelled -> cancelled
-          - Otherwise, ignore cancelled items for progress
-          - delivered only if ALL active items delivered
-          - ready only if ALL active items are at least ready
-          - confirmed only if ALL active items are at least confirmed
-          - else pending
-        """
         rank = {
             'pending': 0,
             'confirmed': 1,
@@ -245,7 +237,6 @@ class Order(models.Model):
         else:
             active = qs.exclude(producer_status='cancelled')
 
-            # everything cancelled
             if active.count() == 0:
                 new_status = 'cancelled'
             else:
@@ -281,15 +272,17 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     producer = models.ForeignKey(ProducerProfile, on_delete=models.PROTECT)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # whole numbers only
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+
     unit_price = models.DecimalField(max_digits=8, decimal_places=2)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
-    # Each producer manages their own portion's status
     producer_status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES, default='pending')
     producer_notes = models.TextField(blank=True)
 
     def save(self, *args, **kwargs):
-        self.subtotal = round(Decimal(str(self.quantity)) * self.unit_price, 2)
+        self.subtotal = round(Decimal(self.quantity) * self.unit_price, 2)
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -318,14 +311,13 @@ class CartItem(models.Model):
     """A product in a shopping cart"""
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.DecimalField(
-        max_digits=10, decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))]
-    )
+
+    # whole numbers only
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
     @property
     def subtotal(self):
-        return round(Decimal(str(self.quantity)) * self.product.discounted_price, 2)
+        return round(Decimal(self.quantity) * self.product.discounted_price, 2)
 
     class Meta:
         unique_together = ('cart', 'product')
@@ -377,13 +369,13 @@ class OrderStatusHistory(models.Model):
 class RecurringOrder(models.Model):
     """Recurring weekly order template for restaurant accounts"""
     DAY_CHOICES = [
-        ('monday',    'Monday'),
-        ('tuesday',   'Tuesday'),
+        ('monday', 'Monday'),
+        ('tuesday', 'Tuesday'),
         ('wednesday', 'Wednesday'),
-        ('thursday',  'Thursday'),
-        ('friday',    'Friday'),
-        ('saturday',  'Saturday'),
-        ('sunday',    'Sunday'),
+        ('thursday', 'Thursday'),
+        ('friday', 'Friday'),
+        ('saturday', 'Saturday'),
+        ('sunday', 'Sunday'),
     ]
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_orders')
@@ -441,10 +433,10 @@ class RecurringOrderItem(models.Model):
         related_name='template_items'
     )
     product = models.ForeignKey('Product', on_delete=models.CASCADE)
-    quantity = models.DecimalField(
-        max_digits=10, decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))]
-    )
+
+    # whole numbers only
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+
     notes = models.CharField(max_length=300, blank=True)
 
     class Meta:
@@ -452,7 +444,6 @@ class RecurringOrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x{self.quantity} — {self.recurring_order.name}"
-    
 
 
 class Review(models.Model):
@@ -463,18 +454,18 @@ class Review(models.Model):
     - Ratings 1-5 stars
     - Optional anonymous display
     """
-    product     = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
-    customer    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
-    order_item  = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='reviews')
-    rating      = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-    title       = models.CharField(max_length=200)
-    body        = models.TextField()
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    title = models.CharField(max_length=200)
+    body = models.TextField()
     is_anonymous = models.BooleanField(default=False)
-    is_flagged   = models.BooleanField(default=False)   # moderation flag
-    created_at   = models.DateTimeField(auto_now_add=True)
+    is_flagged = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('product', 'customer')   # one review per customer per product
+        unique_together = ('product', 'customer')
         ordering = ['-created_at']
 
     def __str__(self):
@@ -486,3 +477,80 @@ class Review(models.Model):
         if self.is_anonymous:
             return "Anonymous"
         return self.customer.get_full_name() or self.customer.username
+
+
+class Recipe(models.Model):
+    """
+    TC-020: Recipes linked to products.
+    """
+    producer = models.ForeignKey(
+        ProducerProfile,
+        on_delete=models.CASCADE,
+        related_name='recipes'
+    )
+    products = models.ManyToManyField(
+        Product,
+        related_name='recipes',
+        blank=True
+    )
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    ingredients = models.TextField()
+    instructions = models.TextField()
+    seasonal_tag = models.CharField(max_length=100, blank=True)
+    image = models.ImageField(upload_to='recipes/', blank=True, null=True)
+    storage_guidance = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class FarmStory(models.Model):
+    """
+    TC-020: Producer farm stories / content.
+    """
+    producer = models.ForeignKey(
+        ProducerProfile,
+        on_delete=models.CASCADE,
+        related_name='farm_stories'
+    )
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    image = models.ImageField(upload_to='farm_stories/', blank=True, null=True)
+    is_approved = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class FavouriteRecipe(models.Model):
+    """
+    TC-020: Customers can save favourite recipes.
+    """
+    customer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='favourite_recipes'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='favourited_by'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('customer', 'recipe')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.customer.username} -> {self.recipe.title}"

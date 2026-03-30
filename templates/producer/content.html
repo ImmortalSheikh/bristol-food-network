@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}Recipes & Farm Stories — Bristol Food Network{% endblock %}
+{% block content %}
+
+<style>
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--green-deep);
+  }
+  .page-sub {
+    color: #718096;
+    font-size: 0.95rem;
+  }
+  .summary-card {
+    background: #fff;
+    border: 1px solid #e8f0eb;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    height: 100%;
+  }
+  .summary-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--green-deep);
+    line-height: 1;
+  }
+  .summary-label {
+    color: #718096;
+    font-size: 0.85rem;
+    margin-top: 8px;
+  }
+  .section-card {
+    background: #fff;
+    border: 1px solid #e8f0eb;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    margin-bottom: 28px;
+  }
+  .section-header {
+    background: var(--green-deep);
+    color: white;
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .section-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0;
+  }
+  .btn-pill {
+    border-radius: 100px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .btn-light-pill {
+    background: white;
+    color: var(--green-deep);
+    border: none;
+  }
+  .btn-light-pill:hover {
+    background: var(--green-pale);
+    color: var(--green-deep);
+  }
+  .item-card {
+    border-bottom: 1px solid #f1f5f3;
+    padding: 20px 22px;
+  }
+  .item-card:last-child {
+    border-bottom: none;
+  }
+  .item-title {
+    font-weight: 700;
+    color: var(--green-deep);
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+  .item-meta {
+    color: #718096;
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+  }
+  .item-text {
+    color: #4a5568;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .tag-pill {
+    display: inline-block;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 100px;
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    margin-right: 6px;
+    margin-bottom: 6px;
+  }
+  .product-pill {
+    display: inline-block;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 100px;
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    margin-right: 6px;
+    margin-bottom: 6px;
+  }
+  .story-image,
+  .recipe-image {
+    width: 100%;
+    max-width: 220px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid #e5efe9;
+  }
+  .empty-state {
+    padding: 42px 24px;
+    text-align: center;
+    color: #718096;
+  }
+  .empty-state .emoji {
+    font-size: 2.6rem;
+    margin-bottom: 10px;
+  }
+  .actions-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+  <div>
+    <h1 class="page-title mb-1">Recipes & Farm Stories</h1>
+    <div class="page-sub">
+      Share recipe ideas, storage guidance, and stories from {{ profile.business_name }}.
+    </div>
+  </div>
+  <div class="actions-row">
+    <a href="{% url 'recipe_create' %}" class="btn btn-success btn-pill">
+      <i class="bi bi-journal-plus me-1"></i> Add Recipe
+    </a>
+    <a href="{% url 'farm_story_create' %}" class="btn btn-outline-success btn-pill">
+      <i class="bi bi-image me-1"></i> Add Farm Story
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="summary-card">
+      <div class="summary-number">{{ recipes|length }}</div>
+      <div class="summary-label">Published Recipes</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="summary-card">
+      <div class="summary-number">{{ stories|length }}</div>
+      <div class="summary-label">Farm Stories</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="summary-card">
+      <div class="summary-number">{{ profile.products.count }}</div>
+      <div class="summary-label">Products Available to Link</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-card">
+  <div class="section-header">
+    <h2 class="section-title mb-0">
+      <i class="bi bi-journal-richtext me-2"></i>Recipes
+    </h2>
+    <a href="{% url 'recipe_create' %}" class="btn btn-light-pill btn-pill">
+      Add Recipe
+    </a>
+  </div>
+
+  {% if recipes %}
+    {% for recipe in recipes %}
+      <div class="item-card">
+        <div class="row g-3 align-items-start">
+          <div class="col-md-8">
+            <div class="item-title">{{ recipe.title }}</div>
+            <div class="item-meta">
+              Published {{ recipe.created_at|date:"d M Y" }}
+            </div>
+
+            {% if recipe.seasonal_tag %}
+              <div class="mb-2">
+                <span class="tag-pill">{{ recipe.seasonal_tag }}</span>
+              </div>
+            {% endif %}
+
+            {% if recipe.description %}
+              <div class="item-text">{{ recipe.description }}</div>
+            {% endif %}
+
+            {% if recipe.products.exists %}
+              <div class="mb-2">
+                {% for linked_product in recipe.products.all %}
+                  <span class="product-pill">{{ linked_product.name }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if recipe.storage_guidance %}
+              <div class="small text-muted mb-3">
+                <strong>Storage guidance:</strong> {{ recipe.storage_guidance|truncatewords:20 }}
+              </div>
+            {% endif %}
+
+            <div class="actions-row">
+              <a href="{% url 'edit_recipe' recipe.pk %}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-pencil me-1"></i>Edit
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-4 text-md-end">
+            {% if recipe.image %}
+              <img src="{{ recipe.image.url }}" alt="{{ recipe.title }}" class="recipe-image">
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="emoji">🥕</div>
+      <h5 class="mb-2">No recipes yet</h5>
+      <p class="mb-3">Create your first recipe and link it to your products.</p>
+      <a href="{% url 'recipe_create' %}" class="btn btn-success btn-pill">
+        Add Your First Recipe
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<div class="section-card">
+  <div class="section-header">
+    <h2 class="section-title mb-0">
+      <i class="bi bi-tree me-2"></i>Farm Stories
+    </h2>
+    <a href="{% url 'farm_story_create' %}" class="btn btn-light-pill btn-pill">
+      Add Farm Story
+    </a>
+  </div>
+
+  {% if stories %}
+    {% for story in stories %}
+      <div class="item-card">
+        <div class="row g-3 align-items-start">
+          <div class="col-md-8">
+            <div class="item-title">{{ story.title }}</div>
+            <div class="item-meta">
+              Published {{ story.created_at|date:"d M Y" }}
+            </div>
+            <div class="item-text">{{ story.content|truncatewords:35 }}</div>
+
+            <div class="actions-row">
+              <a href="{% url 'edit_story' story.pk %}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-pencil me-1"></i>Edit
+              </a>
+              <a href="{% url 'story_detail' story.pk %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye me-1"></i>Preview
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-4 text-md-end">
+            {% if story.image %}
+              <img src="{{ story.image.url }}" alt="{{ story.title }}" class="story-image">
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="emoji">🚜</div>
+      <h5 class="mb-2">No farm stories yet</h5>
+      <p class="mb-3">Share what is happening on the farm and connect with customers.</p>
+      <a href="{% url 'farm_story_create' %}" class="btn btn-success btn-pill">
+        Add Your First Story
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

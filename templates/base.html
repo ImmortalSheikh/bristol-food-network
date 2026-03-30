@@ -26,7 +26,6 @@
             min-height: 100vh;
         }
 
-        /* ── NAVBAR ── */
         .bfn-nav {
             background: rgba(255,255,255,0.92);
             backdrop-filter: blur(12px);
@@ -189,9 +188,28 @@
         }
         .dropdown-divider { border-color: rgba(45,106,79,0.1); }
 
-        /* ── SHARED STYLES ── */
         .btn-primary { background-color: var(--green-mid); border-color: var(--green-mid); }
         .btn-primary:hover { background-color: var(--green-deep); border-color: var(--green-deep); }
+
+        .btn-success {
+            background-color: var(--green-mid);
+            border-color: var(--green-mid);
+        }
+        .btn-success:hover {
+            background-color: var(--green-deep);
+            border-color: var(--green-deep);
+        }
+
+        .btn-outline-success {
+            color: var(--green-mid);
+            border-color: var(--green-mid);
+        }
+        .btn-outline-success:hover {
+            background-color: var(--green-mid);
+            border-color: var(--green-mid);
+            color: white;
+        }
+
         .badge-organic { background-color: var(--green-mid); color: white; border-radius: 100px; padding: 3px 10px; font-size: 0.75rem; }
         .allergen-badge { background-color: #dc3545; color: white; }
         .seasonal-badge { background-color: #fd7e14; color: white; }
@@ -208,7 +226,6 @@
         .alert-success { border-left-color: #198754; }
         .alert-info    { border-left-color: #0dcaf0; }
 
-        /* ── FOOTER ── */
         .bfn-footer {
             background: var(--green-deep);
             color: rgba(255,255,255,0.6);
@@ -229,7 +246,6 @@
 
 <body>
 
-<!-- ── NAVBAR ── -->
 <nav class="bfn-nav navbar navbar-expand-lg">
     <div class="container">
 
@@ -312,6 +328,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'customer_orders' %}">
                             <i class="bi bi-bag me-1"></i>My Orders
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'favourite_recipes' %}">
+                            <i class="bi bi-heart me-1"></i>Favourite Recipes
                         </a>
                     </li>
                     {% if user.role == 'restaurant' %}

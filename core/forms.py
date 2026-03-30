@@ -2,7 +2,10 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import User, ProducerProfile, CustomerProfile, Product, ProductAllergen, ALLERGEN_CHOICES
+from .models import (
+    User, ProducerProfile, CustomerProfile, Product, ProductAllergen,
+    ALLERGEN_CHOICES, Recipe, FarmStory
+)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -31,12 +34,8 @@ class ProducerRegistrationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Style all fields with Bootstrap
         for field in self.fields.values():
-            if not isinstance(field.widget, forms.Textarea):
-                field.widget.attrs['class'] = 'form-control'
-            else:
-                field.widget.attrs['class'] = 'form-control'
+            field.widget.attrs['class'] = 'form-control'
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -117,7 +116,6 @@ class CustomerRegistrationForm(UserCreationForm):
         user.role = customer_type if customer_type != 'individual' else 'customer'
         user.phone = self.cleaned_data['phone']
         user.email = self.cleaned_data['email']
-        # Split full name into first/last
         parts = self.cleaned_data['full_name'].split(' ', 1)
         user.first_name = parts[0]
         user.last_name = parts[1] if len(parts) > 1 else ''
@@ -161,6 +159,24 @@ class ProductForm(forms.ModelForm):
         label='Allergens — tick all that apply (UK 14 major allergens)'
     )
 
+    stock_quantity = forms.IntegerField(
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': '0',
+            'step': '1',
+        })
+    )
+
+    low_stock_threshold = forms.IntegerField(
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': '0',
+            'step': '1',
+        })
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -191,15 +207,12 @@ class ProductForm(forms.ModelForm):
         instance = kwargs.get('instance')
         super().__init__(*args, **kwargs)
 
-        # Always set min to today so it stays current on each page load
         self.fields['best_before_date'].widget.attrs['min'] = timezone.now().date().isoformat()
 
-        # Pre-populate allergens if editing
         if instance:
             current = list(instance.product_allergens.values_list('allergen', flat=True))
             self.fields['allergens'].initial = current
 
-        # Bootstrap styling
         for name, field in self.fields.items():
             if name == 'allergens':
                 continue
@@ -211,14 +224,12 @@ class ProductForm(forms.ModelForm):
                 field.widget.attrs['class'] = 'form-control'
 
     def clean_best_before_date(self):
-        """Server-side validation as a backup to the HTML min attribute"""
         date = self.cleaned_data.get('best_before_date')
         if date and date < timezone.now().date():
             raise ValidationError('Best before date cannot be in the past.')
         return date
 
     def save_allergens(self, product):
-        """Save allergen selections — call this after product.save()"""
         product.product_allergens.all().delete()
         for allergen in self.cleaned_data.get('allergens', []):
             ProductAllergen.objects.create(product=product, allergen=allergen)
@@ -229,28 +240,31 @@ class ProductForm(forms.ModelForm):
 # ─────────────────────────────────────────────────────────────
 
 class CartItemForm(forms.Form):
-    quantity = forms.DecimalField(
-        min_value=0.01,
-        decimal_places=2,
-        max_digits=10,
+    quantity = forms.IntegerField(
+        min_value=1,
         widget=forms.NumberInput(attrs={
             'class': 'form-control',
-            'min': '0.1',
-            'step': '0.1',
+            'min': '1',
+            'step': '1',
             'style': 'width:100px',
         })
     )
+
+
+# ─────────────────────────────────────────────────────────────
+# RECURRING ORDER FORM
+# ─────────────────────────────────────────────────────────────
 
 class RecurringOrderForm(forms.ModelForm):
     """TC-018: Create / edit a recurring order template"""
     class Meta:
         from .models import RecurringOrder
-        model  = RecurringOrder
+        model = RecurringOrder
         fields = ['name', 'order_day', 'delivery_day',
                   'delivery_address', 'delivery_postcode', 'special_instructions']
         widgets = {
-            'delivery_address':      forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'special_instructions':  forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'delivery_address': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'special_instructions': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -260,3 +274,35 @@ class RecurringOrderForm(forms.ModelForm):
                 field.widget.attrs['class'] = 'form-select'
             elif not isinstance(field.widget, forms.Textarea):
                 field.widget.attrs['class'] = 'form-control'
+
+
+# ─────────────────────────────────────────────────────────────
+# TC-020 FORMS
+# ─────────────────────────────────────────────────────────────
+
+class RecipeForm(forms.ModelForm):
+    class Meta:
+        model = Recipe
+        fields = [
+            'title', 'description', 'ingredients', 'instructions',
+            'seasonal_tag', 'image', 'products', 'storage_guidance'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'ingredients': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'instructions': forms.Textarea(attrs={'rows': 5, 'class': 'form-control'}),
+            'seasonal_tag': forms.TextInput(attrs={'class': 'form-control'}),
+            'products': forms.CheckboxSelectMultiple(),
+            'storage_guidance': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+        }
+
+
+class FarmStoryForm(forms.ModelForm):
+    class Meta:
+        model = FarmStory
+        fields = ['title', 'content', 'image']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'rows': 6, 'class': 'form-control'}),
+        }
