@@ -17,7 +17,6 @@
   .btn-place-order { background:var(--green-deep); color:white; border:none; border-radius:14px; padding:15px; font-size:1rem; font-weight:700; width:100%; transition:all 0.2s; }
   .btn-place-order:hover { background:var(--green-mid); transform:translateY(-1px); box-shadow:0 4px 20px rgba(45,106,79,0.3); }
   .payment-test { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-radius:12px; padding:14px 16px; font-size:0.85rem; color:#1e40af; border:1px solid #bfdbfe; margin-bottom:20px; }
-  .input-disabled { background:#f1f5f9!important; color:#94a3b8; cursor:not-allowed; }
 </style>
 
 <h1 class="page-title mb-4">Checkout</h1>
@@ -31,8 +30,11 @@
 <div class="row g-4">
   <div class="col-lg-7">
     <div class="checkout-card">
-      <form method="post">
+      <form method="post" id="checkout-form">
         {% csrf_token %}
+
+        <!-- Hidden field: carries payment method to backend -->
+        <input type="hidden" name="payment_method" id="payment_method_input" value="pm_card_visa">
 
         <div class="section-title"><i class="bi bi-geo-alt me-2"></i>Delivery Details</div>
         <div class="mb-3">
@@ -58,20 +60,20 @@
         <div class="section-title"><i class="bi bi-credit-card me-2"></i>Payment</div>
         <div class="payment-test">
           <i class="bi bi-shield-check me-2"></i>
-          Test environment — no real payment will be processed.
+          Test mode — enter any 16-digit number. End in <strong>9</strong> to simulate a decline.
         </div>
         <div class="mb-3">
           <label class="form-label">Card Number</label>
-          <input type="text" class="form-control input-disabled" placeholder="4242 4242 4242 4242" disabled>
+          <input type="text" id="card_number" class="form-control" placeholder="1234 5678 9012 3456" maxlength="19" autocomplete="off">
         </div>
         <div class="row">
           <div class="col-6 mb-4">
             <label class="form-label">Expiry</label>
-            <input type="text" class="form-control input-disabled" placeholder="MM/YY" disabled>
+            <input type="text" id="expiry" class="form-control" value="12/26" maxlength="5" autocomplete="off">
           </div>
           <div class="col-6 mb-4">
             <label class="form-label">CVV</label>
-            <input type="text" class="form-control input-disabled" placeholder="123" disabled>
+            <input type="text" id="cvv" class="form-control" value="123" maxlength="3" autocomplete="off">
           </div>
         </div>
 
@@ -110,5 +112,32 @@
     </div>
   </div>
 </div>
+
+<script>
+  // Card number: max 16 digits, spaces after every 4
+  // Ends in 9 = decline, anything else = success
+  document.getElementById('card_number').addEventListener('input', function () {
+    var digits = this.value.replace(/\D/g, '').slice(0, 16);
+    this.value = digits.replace(/(.{4})/g, '$1 ').trim();
+    var lastDigit = digits.slice(-1);
+    document.getElementById('payment_method_input').value =
+      lastDigit === '9' ? 'pm_card_visa_chargeDeclined' : 'pm_card_visa';
+  });
+
+  // Expiry: auto insert / after MM
+  document.getElementById('expiry').addEventListener('input', function () {
+    var digits = this.value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 3) {
+      this.value = digits.slice(0, 2) + '/' + digits.slice(2);
+    } else {
+      this.value = digits;
+    }
+  });
+
+  // CVV: digits only
+  document.getElementById('cvv').addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 3);
+  });
+</script>
 
 {% endblock %}

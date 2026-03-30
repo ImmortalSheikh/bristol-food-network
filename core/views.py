@@ -33,7 +33,7 @@ def _get_postcode_coords(postcode):
         postcode_clean = postcode.strip().replace(' ', '')
         response = requests.get(
             f"https://api.postcodes.io/postcodes/{postcode_clean}",
-            timeout=5
+            timeout=2  # kept short to avoid gunicorn worker timeouts
         )
         if response.status_code == 200:
             data = response.json()
@@ -477,11 +477,15 @@ def checkout(request):
 
         total = cart.total
 
+        # ── Payment: reads card choice from checkout form ──
         try:
+            payment_method = request.POST.get('payment_method', 'pm_card_visa')
             payment_response = requests.post(
                 'http://payment:5000/pay',
                 json={
                     'amount': float(total),
+                    'currency': 'gbp',
+                    'payment_method': payment_method,
                     'customer_id': request.user.id,
                 },
                 timeout=10
@@ -491,8 +495,14 @@ def checkout(request):
             return redirect('checkout')
 
         if payment_response.status_code != 200:
-            messages.error(request, 'Payment failed. Please try again.')
+            try:
+                payment_data = payment_response.json()
+                error_message = payment_data.get('message', 'Payment failed. Please try again.')
+            except Exception:
+                error_message = 'Payment failed. Please try again.'
+            messages.error(request, error_message)
             return redirect('checkout')
+        # ──────────────────────────────────────────────────
 
         payment_data = payment_response.json()
         transaction_id = payment_data.get('transaction_id', '')

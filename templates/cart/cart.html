@@ -5,7 +5,7 @@
 <style>
   .page-title { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--green-deep); }
   .producer-card { background:#fff; border-radius:20px; border:1px solid #e8f0eb; overflow:hidden; margin-bottom:20px; box-shadow:0 2px 12px rgba(0,0,0,0.04); }
-  .producer-header { background:var(--green-deep); color:white; padding:14px 20px; display:flex; align-items:center; gap:10px; }
+  .producer-header { background:var(--green-deep); color:white; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .producer-header .name { font-weight:600; font-size:0.95rem; }
   .producer-header .postcode { font-size:0.8rem; opacity:0.65; }
   .cart-table { width:100%; }
@@ -34,6 +34,10 @@
   .btn-continue:hover { border-color:var(--green-light); color:var(--green-deep); }
   .empty-cart { text-align:center; padding:80px 20px; }
   .empty-emoji { font-size:4rem; margin-bottom:20px; display:block; }
+  .miles-badge { font-size:0.78rem; font-weight:600; padding:4px 10px; border-radius:100px; }
+  .miles-green  { background:#dcfce7; color:#166534; }
+  .miles-amber  { background:#fef3c7; color:#92400e; }
+  .miles-grey   { background:#f1f5f9; color:#475569; }
 </style>
 
 <div class="d-flex align-items-center gap-3 mb-4">
@@ -59,11 +63,22 @@
     {% for group in by_producer %}
     <div class="producer-card">
       <div class="producer-header">
-        <i class="bi bi-shop"></i>
-        <div>
-          <div class="name">{{ group.producer.business_name }}</div>
-          <div class="postcode">📍 {{ group.producer.farm_postcode }}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <i class="bi bi-shop"></i>
+          <div>
+            <div class="name">{{ group.producer.business_name }}</div>
+            <div class="postcode">📍 {{ group.producer.farm_postcode }}</div>
+          </div>
         </div>
+        <!-- Food miles badge per producer -->
+        {% if group.food_miles is not None %}
+        <span class="miles-badge
+          {% if group.food_miles <= 5 %}miles-green
+          {% elif group.food_miles <= 15 %}miles-amber
+          {% else %}miles-grey{% endif %}">
+          🌍 {{ group.food_miles }} miles away
+        </span>
+        {% endif %}
       </div>
       <table class="cart-table">
         <thead>
@@ -119,6 +134,12 @@
         <span class="text-muted small">Network Commission (5%)</span>
         <span class="text-muted small">included</span>
       </div>
+      {% if total_food_miles is not None %}
+      <div class="summary-row">
+        <span class="text-muted small">🌍 Total food miles</span>
+        <span class="text-muted small"><strong>{{ total_food_miles }} miles</strong></span>
+      </div>
+      {% endif %}
       <hr style="border-color:#e8f0eb;">
       <div class="summary-row mb-4">
         <span style="font-weight:600;">Total</span>

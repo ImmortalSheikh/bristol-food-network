@@ -28,6 +28,15 @@
             {% if product.is_organic %}<span class="badge badge-organic me-1 py-2 px-3">✓ Certified Organic</span>{% endif %}
             {% if product.availability == 'in_season' %}<span class="badge seasonal-badge me-1 py-2 px-3">🌱 In Season</span>{% endif %}
             {% if product.is_surplus %}<span class="badge surplus-badge me-1 py-2 px-3">⚡ {{ product.surplus_discount_percent }}% Off — Surplus Deal</span>{% endif %}
+
+            {% if food_miles is not None %}
+            <span class="badge py-2 px-3 me-1
+                {% if food_miles <= 5 %}bg-success
+                {% elif food_miles <= 15 %}bg-warning text-dark
+                {% else %}bg-secondary{% endif %}">
+                🌍 {{ food_miles }} miles away
+            </span>
+            {% endif %}
         </div>
 
         <div class="mb-3">
@@ -113,31 +122,25 @@
                 {% endif %}
                 <div class="card-body">
                     <h5 class="card-title fw-bold">{{ recipe.title }}</h5>
-
                     {% if recipe.seasonal_tag %}
                         <span class="badge bg-success mb-2">{{ recipe.seasonal_tag }}</span>
                     {% endif %}
-
                     {% if recipe.description %}
                         <p class="text-muted small">{{ recipe.description }}</p>
                     {% endif %}
-
                     <details class="mt-2">
                         <summary class="text-primary">View Details</summary>
                         <div class="mt-2">
                             <strong>Ingredients:</strong>
                             <p class="small">{{ recipe.ingredients }}</p>
-
                             <strong>Instructions:</strong>
                             <p class="small">{{ recipe.instructions }}</p>
-
                             {% if recipe.storage_guidance %}
                                 <strong>Storage Guidance:</strong>
                                 <p class="small">{{ recipe.storage_guidance }}</p>
                             {% endif %}
                         </div>
                     </details>
-
                     {% if user.is_authenticated and not user.is_producer %}
                     <form method="post" action="{% url 'toggle_favourite_recipe' recipe.pk %}" class="mt-3">
                         {% csrf_token %}
@@ -166,9 +169,7 @@
                     <h5 class="card-title fw-bold">{{ story.title }}</h5>
                     <p class="text-muted small">{{ story.content|truncatewords:25 }}</p>
                     <small class="text-secondary d-block mb-3">{{ story.created_at|date:"d M Y" }}</small>
-                    <a href="{% url 'story_detail' story.pk %}" class="text-primary small">
-                        Read more →
-                    </a>
+                    <a href="{% url 'story_detail' story.pk %}" class="text-primary small">Read more →</a>
                 </div>
             </div>
             {% endfor %}

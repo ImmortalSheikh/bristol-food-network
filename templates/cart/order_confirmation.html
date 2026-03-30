@@ -23,6 +23,15 @@
     <p class="text-muted">
         Delivery expected: <strong>{{ order.delivery_date|date:'d M Y' }}</strong>
     </p>
+
+    {% if total_food_miles is not None %}
+    <div class="d-inline-block mt-1 mb-2">
+        <span class="badge bg-success py-2 px-3 fs-6">
+            🌍 Total food miles for this order: {{ total_food_miles }} miles
+        </span>
+        <div class="text-muted small mt-1">Supporting local food within Bristol's 20-mile network</div>
+    </div>
+    {% endif %}
 </div>
 
 <div class="row justify-content-center">
@@ -47,13 +56,16 @@
                     </tr>
 
                     <tr>
-                        <td class="text-muted small">
-                            Network Commission (5%)
-                        </td>
-                        <td class="text-end text-muted small">
-                            £{{ order.commission_amount }}
-                        </td>
+                        <td class="text-muted small">Network Commission (5%)</td>
+                        <td class="text-end text-muted small">£{{ order.commission_amount }}</td>
                     </tr>
+
+                    {% if total_food_miles is not None %}
+                    <tr>
+                        <td class="text-muted small">🌍 Total food miles</td>
+                        <td class="text-end text-muted small">{{ total_food_miles }} miles</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
 
@@ -75,7 +87,6 @@
         <div class="card p-4 mb-3">
             <h5>Supplier Contact Details</h5>
             <ul class="list-group list-group-flush">
-
                 {% for item in items %}
                     {% ifchanged item.producer.pk %}
                         <li class="list-group-item">
@@ -88,9 +99,7 @@
                         </li>
                     {% endifchanged %}
                 {% endfor %}
-
             </ul>
-
             <p class="text-muted small mt-2 mb-0">
                 Use these contact details if you need to coordinate delivery.
             </p>

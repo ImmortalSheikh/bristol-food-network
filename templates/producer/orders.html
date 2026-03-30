@@ -34,6 +34,7 @@
   .empty-state { text-align:center;padding:60px 20px; }
   .recurring-badge { background:#dbeafe;color:#1e40af;border-radius:100px;padding:3px 10px;font-size:0.72rem;font-weight:700;display:inline-block; }
   .bulk-badge { background:#fef3c7;color:#92400e;border-radius:100px;padding:3px 10px;font-size:0.72rem;font-weight:700;display:inline-block; }
+  .note-pill { background:#f0f7ff;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;padding:4px 8px;margin-top:4px;font-size:0.78rem;color:#374151; }
 </style>
 
 <h1 class="page-title mb-4">Order Management</h1>
@@ -75,7 +76,12 @@
             <div class="customer-meta mt-1"><i class="bi bi-chat-left-text me-1"></i>{{ item.order.special_instructions|truncatechars:40 }}</div>
           {% endif %}
         </td>
-        <td style="font-weight:600;color:var(--green-deep);">{{ item.product.name }}</td>
+        <td>
+          <div style="font-weight:600;color:var(--green-deep);">{{ item.product.name }}</div>
+          {% if item.producer_notes %}
+          <div class="note-pill"><strong>Your note:</strong> {{ item.producer_notes }}</div>
+          {% endif %}
+        </td>
         <td style="color:#718096;">{{ item.quantity }} {{ item.product.get_unit_display }}</td>
         <td style="font-weight:700;color:var(--green-mid);">£{{ item.subtotal }}</td>
         <td style="color:#4a5568;">{{ item.order.delivery_date|date:'d M Y' }}</td>
@@ -111,7 +117,7 @@
                     </div>
                     <div class="mb-3">
                       <label class="form-label fw-semibold small">Notes (optional)</label>
-                      <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Products prepared and ready for collection"></textarea>
+                      <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Products prepared and ready for collection">{{ item.producer_notes }}</textarea>
                     </div>
                   </div>
                   <div class="modal-footer">

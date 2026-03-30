@@ -70,6 +70,12 @@
               {% endfor %}
             </div>
 
+          {% elif field.name == 'price' or field.name == 'discount_price' %}
+            <div class="input-group">
+              <span class="input-group-text">£</span>
+              {{ field }}
+            </div>
+
           {% else %}
             {{ field }}
           {% endif %}
