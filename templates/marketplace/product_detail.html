@@ -14,7 +14,7 @@
         {% if product.image %}
         <img src="{{ product.image.url }}" class="img-fluid rounded shadow-sm" alt="{{ product.name }}">
         {% else %}
-        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height:300px;font-size:5rem;">🛒</div>
+        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height:300px;font-size:5rem;">{{ product.category.display_icon|default:"🛒" }}</div>
         {% endif %}
     </div>
     <div class="col-md-7">

@@ -9,14 +9,15 @@ User = get_user_model()
 
 
 DEFAULT_CATEGORIES = [
-    "Bakery",
-    "Dairy & Eggs",
-    "Drinks",
-    "Fruit",
-    "Meat & Poultry",
-    "Preserves & Jams",
-    "Seasonal Specialties",
-    "Vegetables",
+    # (display name, emoji icon)
+    ("Bakery", "🍞"),
+    ("Dairy & Eggs", "🥛"),
+    ("Drinks", "🥤"),
+    ("Fruit", "🍓"),
+    ("Meat & Poultry", "🍗"),
+    ("Preserves & Jams", "🍯"),
+    ("Seasonal Specialties", "🍂"),
+    ("Vegetables", "🥦"),
 ]
 
 
@@ -34,19 +35,25 @@ class Command(BaseCommand):
         self.stdout.write(self.style.NOTICE("Seeding data..."))
 
         # 1) Categories
-        for name in DEFAULT_CATEGORIES:
+        for name, icon in DEFAULT_CATEGORIES:
             slug = slugify(name)
             obj, created = Category.objects.get_or_create(
                 slug=slug,
-                defaults={"name": name, "description": ""},
+                defaults={"name": name, "description": "", "icon": icon},
             )
             if created:
-                self.stdout.write(self.style.SUCCESS(f"Created category: {name}"))
+                self.stdout.write(self.style.SUCCESS(f"Created category: {name} {icon}"))
             else:
-                # keep name in sync in case someone edited it
+                # keep name + icon in sync; never let a category sit without an icon
+                changed = []
                 if obj.name != name:
                     obj.name = name
-                    obj.save(update_fields=["name"])
+                    changed.append("name")
+                if not (obj.icon or "").strip():
+                    obj.icon = icon
+                    changed.append("icon")
+                if changed:
+                    obj.save(update_fields=changed)
                 self.stdout.write(f"Category exists: {name}")
 
         if not options["with_demo_products"]:

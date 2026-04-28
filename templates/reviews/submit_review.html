@@ -23,6 +23,8 @@
           <div class="d-flex align-items-center mb-4 p-3 bg-light rounded">
             {% if product.image %}
               <img src="{{ product.image.url }}" alt="{{ product.name }}" class="rounded me-3" style="width:60px;height:60px;object-fit:cover;">
+            {% else %}
+              <div class="rounded me-3 d-flex align-items-center justify-content-center" style="width:60px;height:60px;background:#fff;font-size:1.8rem;">{{ product.category.display_icon|default:"🛒" }}</div>
             {% endif %}
             <div>
               <h5 class="mb-0">{{ product.name }}</h5>

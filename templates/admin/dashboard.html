@@ -216,27 +216,33 @@
     <form method="post" action="{% url 'admin_add_category' %}">
       {% csrf_token %}
       <div class="row g-2 align-items-end">
-        <div class="col-md-5">
+        <div class="col-md-4">
           <label class="form-label fw-semibold small">Category Name</label>
           <input type="text" name="name" class="form-control" placeholder="e.g. Herbs" required>
         </div>
-        <div class="col-md-5">
+        <div class="col-md-4">
           <label class="form-label fw-semibold small">Slug</label>
           <input type="text" name="slug" class="form-control" placeholder="e.g. herbs" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold small">Icon</label>
+          <input type="text" name="icon" class="form-control text-center" placeholder="🛒" maxlength="8" value="🛒">
         </div>
         <div class="col-md-2">
           <button type="submit" class="btn-add-cat w-100">Add</button>
         </div>
       </div>
+      <div class="form-text small mt-2">Tip: paste any emoji (🥦 🍓 🥛 🍞 🥩 🐟 🍯 🌿). Leaving it blank shows 🛒.</div>
     </form>
   </div>
 </div>
 <div class="data-card">
   <table class="data-table">
-    <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th></th></tr></thead>
+    <thead><tr><th>Icon</th><th>Name</th><th>Slug</th><th>Products</th><th></th></tr></thead>
     <tbody>
       {% for cat in all_categories %}
       <tr>
+        <td style="font-size:1.4rem;line-height:1;">{{ cat.display_icon|default:"🛒" }}</td>
         <td style="font-weight:600;color:var(--green-deep);">{{ cat.name }}</td>
         <td><code style="background:#f1f5f9;padding:2px 8px;border-radius:6px;font-size:0.83rem;color:#4a5568;">{{ cat.slug }}</code></td>
         <td style="color:#718096;">{{ cat.products.count }}</td>

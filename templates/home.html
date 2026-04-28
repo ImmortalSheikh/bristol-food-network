@@ -384,13 +384,7 @@
         {% elif category.slug == 'fruit' %}cat-fruit
         {% elif category.slug == 'dairy' %}cat-dairy
         {% elif category.slug == 'bakery' %}cat-bake{% endif %}">
-        <span class="cat-emoji">
-          {% if category.slug == 'vegetables' %}🥦
-          {% elif category.slug == 'fruit' %}🍓
-          {% elif category.slug == 'dairy' %}🥛
-          {% elif category.slug == 'bakery' %}🍞
-          {% else %}🛒{% endif %}
-        </span>
+        <span class="cat-emoji">{{ category.display_icon|default:"🛒" }}</span>
         <div class="cat-name">{{ category.name }}</div>
         <div class="cat-count">{{ category.products.count }} products</div>
       </a>
@@ -420,11 +414,7 @@
           {% if product.image %}
             <img src="{{ product.image.url }}" alt="{{ product.name }}">
           {% else %}
-            {% if product.category.slug == 'vegetables' %}🥦
-            {% elif product.category.slug == 'fruit' %}🍓
-            {% elif product.category.slug == 'dairy' %}🥛
-            {% elif product.category.slug == 'bakery' %}🥐
-            {% else %}🛒{% endif %}
+            {{ product.category.display_icon|default:"🛒" }}
           {% endif %}
         </div>
         <div class="product-card-body">

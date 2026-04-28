@@ -28,8 +28,9 @@ class CustomerProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug')
+    list_display = ('icon', 'name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
+    fields = ('name', 'slug', 'icon', 'description')
 
 
 class ProductAllergenInline(admin.TabularInline):

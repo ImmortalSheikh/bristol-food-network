@@ -1200,8 +1200,13 @@ def admin_add_category(request):
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         slug = request.POST.get('slug', '').strip()
+        icon = (request.POST.get('icon', '') or '').strip() or '🛒'
         if name and slug:
-            Category.objects.get_or_create(name=name, slug=slug)
+            Category.objects.get_or_create(
+                name=name,
+                slug=slug,
+                defaults={'icon': icon},
+            )
             messages.success(request, f'Category "{name}" added.')
         else:
             messages.error(request, 'Name and slug are required.')

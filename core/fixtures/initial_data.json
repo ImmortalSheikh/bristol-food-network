@@ -163,7 +163,8 @@
   "fields": {
     "name": "Vegetables",
     "slug": "vegetables",
-    "description": ""
+    "description": "",
+    "icon": "🥦"
   }
 },
 {
@@ -172,7 +173,8 @@
   "fields": {
     "name": "Dairy & Eggs",
     "slug": "dairy-eggs",
-    "description": ""
+    "description": "",
+    "icon": "🥛"
   }
 },
 {
@@ -181,7 +183,8 @@
   "fields": {
     "name": "Bakery",
     "slug": "bakery",
-    "description": ""
+    "description": "",
+    "icon": "🍞"
   }
 },
 {
@@ -190,7 +193,8 @@
   "fields": {
     "name": "Preserves & Jams",
     "slug": "preserves-jams",
-    "description": ""
+    "description": "",
+    "icon": "🍯"
   }
 },
 {
@@ -199,7 +203,8 @@
   "fields": {
     "name": "Seasonal Specialties",
     "slug": "seasonal-specialties",
-    "description": ""
+    "description": "",
+    "icon": "🍂"
   }
 },
 {
@@ -208,7 +213,8 @@
   "fields": {
     "name": "Meat & Poultry",
     "slug": "meat-poultry",
-    "description": ""
+    "description": "",
+    "icon": "🍗"
   }
 },
 {
@@ -217,7 +223,8 @@
   "fields": {
     "name": "Fruit",
     "slug": "fruit",
-    "description": ""
+    "description": "",
+    "icon": "🍓"
   }
 },
 {
@@ -226,7 +233,8 @@
   "fields": {
     "name": "Drinks",
     "slug": "drinks",
-    "description": ""
+    "description": "",
+    "icon": "🥤"
   }
 },
 {

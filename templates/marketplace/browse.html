@@ -103,12 +103,7 @@
       {% for cat in categories %}
       <a href="{% url 'marketplace' %}?category={{ cat.slug }}{% if search_query %}&q={{ search_query }}{% endif %}"
          class="sidebar-link {% if selected_category.pk == cat.pk %}active{% endif %}">
-        <span class="cat-dot" style="background:
-          {% if cat.slug == 'vegetables' %}#22c55e
-          {% elif cat.slug == 'fruit' %}#f97316
-          {% elif cat.slug == 'dairy' %}#3b82f6
-          {% elif cat.slug == 'bakery' %}#eab308
-          {% else %}#94a3b8{% endif %};"></span>
+        <span style="font-size:1.05rem;line-height:1;">{{ cat.display_icon|default:"🛒" }}</span>
         {{ cat.name }}
       </a>
       {% endfor %}
@@ -168,11 +163,7 @@
             {% if product.image %}
               <img src="{{ product.image.url }}" alt="{{ product.name }}">
             {% else %}
-              {% if product.category.slug == 'vegetables' %}🥦
-              {% elif product.category.slug == 'fruit' %}🍓
-              {% elif product.category.slug == 'dairy' %}🥛
-              {% elif product.category.slug == 'bakery' %}🥐
-              {% else %}🛒{% endif %}
+              {{ product.category.display_icon|default:"🛒" }}
             {% endif %}
           </div>
           <div class="product-body">

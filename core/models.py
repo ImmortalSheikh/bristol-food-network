@@ -75,10 +75,29 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
+    # Emoji / short symbol shown on category & product cards when no image exists.
+    # Always rendered as text so it can never be empty in the UI.
+    icon = models.CharField(
+        max_length=8,
+        default='🛒',
+        blank=False,
+        help_text='Emoji or short symbol shown on cards. Always shows something.',
+    )
 
     class Meta:
         verbose_name_plural = 'categories'
         ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        # Defensive: never allow a blank icon to be persisted.
+        if not (self.icon or '').strip():
+            self.icon = '🛒'
+        super().save(*args, **kwargs)
+
+    @property
+    def display_icon(self):
+        """Always returns a non-empty icon for templates."""
+        return self.icon if (self.icon or '').strip() else '🛒'
 
     def __str__(self):
         return self.name
