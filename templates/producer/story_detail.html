@@ -1,68 +1,314 @@
 {% extends 'base.html' %}
 {% block title %}{{ story.title }} — Bristol Food Network{% endblock %}
-{% block content %}
 
+{% block extra_css %}
 <style>
-  .story-shell {
-    max-width: 900px;
-    margin: 0 auto;
-  }
-  .story-card {
-    background: #fff;
-    border: 1px solid #e8f0eb;
-    border-radius: 22px;
+  /* ── Hero ───────────────────────────────────────────────── */
+  .story-hero {
+    position: relative;
+    width: 100%;
+    min-height: 480px;
+    display: flex;
+    align-items: flex-end;
+    background: var(--green-deep);
+    border-radius: 24px;
     overflow: hidden;
-    box-shadow: 0 3px 14px rgba(0,0,0,0.05);
+    margin-bottom: 0;
   }
-  .story-body {
-    padding: 30px;
+  .story-hero-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.45;
   }
-  .story-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 2rem;
+  .story-hero-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(10,30,20,0.15) 0%,
+      rgba(10,30,20,0.85) 100%
+    );
+  }
+  .story-hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 48px 48px 44px;
+    width: 100%;
+  }
+  .story-category-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-light);
+    color: white;
+    font-size: 0.75rem;
     font-weight: 700;
-    color: var(--green-deep);
-  }
-  .story-meta {
-    color: #718096;
-    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 100px;
     margin-bottom: 18px;
   }
-  .story-content {
-    color: #334155;
-    font-size: 1rem;
-    line-height: 1.8;
-    white-space: pre-line;
+  .story-hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    max-width: 780px;
   }
-  .story-image {
-    width: 100%;
-    max-height: 420px;
-    object-fit: cover;
-    display: block;
+  .story-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .story-author-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 100px;
+    padding: 6px 16px 6px 6px;
+  }
+  .story-author-avatar {
+    width: 32px;
+    height: 32px;
+    background: var(--green-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+  .story-author-name {
+    color: rgba(255,255,255,0.95);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .story-date-chip {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .story-read-chip {
+    color: rgba(255,255,255,0.7);
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ── Article body ───────────────────────────────────────── */
+  .story-body-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 56px 0 80px;
+  }
+  .story-body p {
+    font-size: 1.08rem;
+    line-height: 1.9;
+    color: #2d3748;
+    margin-bottom: 1.6rem;
+  }
+  /* Drop-cap on first paragraph */
+  .story-body p:first-child::first-letter {
+    float: left;
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 0.82;
+    margin: 6px 10px 0 0;
+    color: var(--green-mid);
+  }
+
+  /* Pull quote — any paragraph that starts with " gets styled */
+  .story-pull-quote {
+    position: relative;
+    border-left: 4px solid var(--green-light);
+    background: var(--green-pale);
+    border-radius: 0 16px 16px 0;
+    padding: 24px 28px 24px 32px;
+    margin: 40px 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--green-deep);
+    line-height: 1.6;
+  }
+  .story-pull-quote::before {
+    content: '\201C';
+    position: absolute;
+    top: -12px;
+    left: 16px;
+    font-size: 5rem;
+    color: var(--green-light);
+    font-family: 'Playfair Display', serif;
+    line-height: 1;
+    opacity: 0.5;
+  }
+
+  /* Section divider */
+  .story-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 44px 0;
+    color: var(--green-light);
+  }
+  .story-divider::before,
+  .story-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--green-pale);
+  }
+
+  /* ── Farm card at bottom ────────────────────────────────── */
+  .story-farm-card {
+    background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-mid) 100%);
+    border-radius: 20px;
+    padding: 36px 40px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    margin-top: 60px;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 40px;
+  }
+  .farm-card-icon {
+    width: 64px;
+    height: 64px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+  }
+  .farm-card-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .farm-card-desc {
+    font-size: 0.88rem;
+    opacity: 0.75;
+    line-height: 1.5;
+  }
+  .farm-card-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 100px;
+    padding: 9px 22px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .farm-card-btn:hover {
+    background: white;
+    color: var(--green-deep);
+  }
+
+  /* ── Back link ──────────────────────────────────────────── */
+  .story-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--green-mid);
+    font-weight: 600;
+    font-size: 0.88rem;
+    text-decoration: none;
+    margin-bottom: 20px;
+    transition: gap 0.2s;
+  }
+  .story-back:hover { gap: 10px; color: var(--green-deep); }
+
+  @media (max-width: 600px) {
+    .story-hero-content { padding: 28px 24px 28px; }
+    .story-body-wrap { padding: 32px 0 48px; }
+    .story-farm-card { flex-direction: column; text-align: center; }
+    .farm-card-btn { margin-left: 0; }
+    .story-body p:first-child::first-letter { font-size: 3rem; }
   }
 </style>
+{% endblock %}
 
-<div class="story-shell">
-  <div class="mb-3">
-    <a href="{% url 'marketplace' %}" class="text-decoration-none">
-      <i class="bi bi-arrow-left me-1"></i>Back
-    </a>
-  </div>
+{% block content %}
 
-  <div class="story-card">
-    {% if story.image %}
-      <img src="{{ story.image.url }}" alt="{{ story.title }}" class="story-image">
-    {% endif %}
+<a href="{% url 'marketplace' %}" class="story-back">
+  <i class="bi bi-arrow-left"></i> Back to Marketplace
+</a>
 
-    <div class="story-body">
-      <h1 class="story-title mb-2">{{ story.title }}</h1>
-      <div class="story-meta">
-        {{ story.producer.business_name }} · {{ story.created_at|date:"d M Y" }}
+<!-- Hero -->
+<div class="story-hero">
+  {% if story.image %}
+    <img src="{{ story.image.url }}" alt="{{ story.title }}" class="story-hero-img">
+  {% endif %}
+  <div class="story-hero-gradient"></div>
+  <div class="story-hero-content">
+    <div class="story-category-pill">
+      <i class="bi bi-journal-text"></i> Farm Story
+    </div>
+    <h1 class="story-hero-title">{{ story.title }}</h1>
+    <div class="story-hero-meta">
+      <div class="story-author-chip">
+        <div class="story-author-avatar">🌿</div>
+        <span class="story-author-name">{{ story.producer.business_name }}</span>
       </div>
-
-      <div class="story-content">{{ story.content }}</div>
+      <span class="story-date-chip">
+        <i class="bi bi-calendar3"></i>
+        {{ story.created_at|date:"d F Y" }}
+      </span>
+      <span class="story-read-chip">
+        <i class="bi bi-clock"></i>
+        {% with words=story.content|wordcount %}
+          {{ words|divisibleby:200|yesno:"," }}~{{ words|add:0 | floatformat:0 }} word read
+        {% endwith %}
+      </span>
     </div>
   </div>
+</div>
+
+<!-- Article -->
+<div class="story-body-wrap">
+  <div class="story-body">
+    {{ story.content|linebreaks }}
+  </div>
+
+  <div class="story-divider">
+    <i class="bi bi-flower1" style="font-size:1.2rem;"></i>
+  </div>
+</div>
+
+<!-- Farm card -->
+<div class="story-farm-card">
+  <div class="farm-card-icon">🌾</div>
+  <div>
+    <div class="farm-card-name">{{ story.producer.business_name }}</div>
+    <div class="farm-card-desc">{{ story.producer.description|truncatewords:18 }}</div>
+  </div>
+  <a href="{% url 'marketplace' %}" class="farm-card-btn">
+    Shop their produce <i class="bi bi-arrow-right ms-1"></i>
+  </a>
 </div>
 
 {% endblock %}

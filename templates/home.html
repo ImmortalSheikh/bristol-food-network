@@ -294,6 +294,93 @@
   .why-title { font-weight: 700; color: var(--green-deep); font-size: 1rem; margin-bottom: 8px; }
   .why-text { color: var(--text-mid); font-size: 0.9rem; line-height: 1.6; }
 
+  /* ── STORIES ── */
+  .story-card {
+    background: var(--warm-white);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+  }
+  .story-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.1);
+  }
+  .story-card-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+  .story-card-img-placeholder {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, var(--green-deep), var(--green-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+  }
+  .story-card-body {
+    padding: 22px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .story-card-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--green-pale);
+    color: var(--green-mid);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .story-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--green-deep);
+    line-height: 1.35;
+    margin-bottom: 10px;
+  }
+  .story-card-excerpt {
+    color: var(--text-mid);
+    font-size: 0.88rem;
+    line-height: 1.65;
+    flex: 1;
+    margin-bottom: 16px;
+  }
+  .story-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #f1f5f3;
+    padding-top: 14px;
+    margin-top: auto;
+  }
+  .story-card-author {
+    font-size: 0.8rem;
+    color: var(--text-mid);
+    font-weight: 500;
+  }
+  .story-card-read {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--green-mid);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   /* ── CTA BANNER ── */
   .cta-banner {
     background: linear-gradient(135deg, var(--green-mid), var(--green-deep));
@@ -505,6 +592,43 @@
     </div>
   </div>
 </div>
+
+<!-- ── FARM STORIES ── -->
+{% if recent_stories %}
+<div class="mb-5">
+  <div class="d-flex justify-content-between align-items-end mb-1">
+    <div>
+      <h2 class="section-title mb-1">From the Farm</h2>
+      <p class="section-sub mb-0">Stories and news direct from our local producers</p>
+    </div>
+    <a href="{% url 'stories_list' %}" class="text-decoration-none" style="color:var(--green-mid);font-weight:500;font-size:0.9rem;white-space:nowrap;">
+      All stories <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+  <div class="row g-3 mt-2">
+    {% for story in recent_stories %}
+    <div class="col-md-4">
+      <a href="{% url 'story_detail' story.pk %}" class="story-card">
+        {% if story.image %}
+          <img src="{{ story.image.url }}" alt="{{ story.title }}" class="story-card-img">
+        {% else %}
+          <div class="story-card-img-placeholder">🌿</div>
+        {% endif %}
+        <div class="story-card-body">
+          <div class="story-card-tag"><i class="bi bi-journal-text"></i> Farm Story</div>
+          <div class="story-card-title">{{ story.title }}</div>
+          <div class="story-card-excerpt">{{ story.content|truncatewords:22 }}</div>
+          <div class="story-card-footer">
+            <span class="story-card-author">🌱 {{ story.producer.business_name }}</span>
+            <span class="story-card-read">Read <i class="bi bi-arrow-right"></i></span>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <!-- ── CTA ── -->
 {% if not user.is_authenticated %}

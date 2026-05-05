@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+{% block title %}Farm Stories — Bristol Food Network{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Page header ── */
+  .stories-header {
+    background: linear-gradient(135deg, var(--green-deep) 0%, var(--green-mid) 100%);
+    border-radius: 24px;
+    padding: 56px 56px 52px;
+    margin-bottom: 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stories-header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(82,183,136,0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .stories-header-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.9);
+    border-radius: 100px;
+    padding: 5px 16px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .stories-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 12px;
+    line-height: 1.15;
+  }
+  .stories-header p {
+    color: rgba(255,255,255,0.65);
+    font-size: 1.05rem;
+    max-width: 520px;
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  /* ── Featured story (first one, large) ── */
+  .story-featured {
+    display: flex;
+    background: white;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    margin-bottom: 36px;
+    text-decoration: none;
+    transition: all 0.25s ease;
+    min-height: 320px;
+  }
+  .story-featured:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.1);
+  }
+  .story-featured-img {
+    width: 48%;
+    flex-shrink: 0;
+    object-fit: cover;
+    display: block;
+  }
+  .story-featured-img-placeholder {
+    width: 48%;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--green-deep), var(--green-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+  }
+  .story-featured-body {
+    padding: 40px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .story-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--green-pale);
+    color: var(--green-mid);
+    border-radius: 100px;
+    padding: 4px 14px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .story-featured-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 2.5vw, 2rem);
+    font-weight: 700;
+    color: var(--green-deep);
+    line-height: 1.25;
+    margin-bottom: 14px;
+  }
+  .story-featured-excerpt {
+    color: #4a5568;
+    font-size: 0.97rem;
+    line-height: 1.75;
+    margin-bottom: 24px;
+    flex: 1;
+  }
+  .story-meta {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 0.82rem;
+    color: #718096;
+    flex-wrap: wrap;
+  }
+  .story-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .btn-read {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-mid);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 10px 24px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    width: fit-content;
+    margin-top: 20px;
+  }
+  .btn-read:hover {
+    background: var(--green-deep);
+    color: white;
+    transform: translateX(3px);
+  }
+
+  /* ── Grid cards ── */
+  .story-grid-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    transition: all 0.25s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+  }
+  .story-grid-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.1);
+  }
+  .story-grid-img {
+    width: 100%;
+    height: 210px;
+    object-fit: cover;
+  }
+  .story-grid-img-placeholder {
+    width: 100%;
+    height: 210px;
+    background: linear-gradient(135deg, var(--green-deep), var(--green-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+  }
+  .story-grid-body {
+    padding: 22px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .story-grid-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--green-deep);
+    line-height: 1.35;
+    margin-bottom: 10px;
+  }
+  .story-grid-excerpt {
+    color: #4a5568;
+    font-size: 0.875rem;
+    line-height: 1.65;
+    flex: 1;
+    margin-bottom: 16px;
+  }
+  .story-grid-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #f1f5f3;
+    padding-top: 14px;
+    margin-top: auto;
+  }
+  .story-producer-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.8rem;
+    color: #4a5568;
+    font-weight: 500;
+  }
+  .story-producer-dot {
+    width: 24px;
+    height: 24px;
+    background: var(--green-pale);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+  }
+  .story-read-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--green-mid);
+  }
+
+  /* ── Section divider ── */
+  .stories-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 40px 0 32px;
+    color: var(--green-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .stories-divider::before,
+  .stories-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e8f0eb;
+  }
+
+  /* ── Empty state ── */
+  .empty-stories {
+    text-align: center;
+    padding: 80px 24px;
+    color: #718096;
+  }
+
+  @media (max-width: 768px) {
+    .story-featured { flex-direction: column; }
+    .story-featured-img, .story-featured-img-placeholder { width: 100%; height: 240px; }
+    .story-featured-body { padding: 24px; }
+    .stories-header { padding: 36px 28px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="stories-header">
+  <div class="stories-header-tag"><i class="bi bi-journal-richtext"></i> Bristol Food Network</div>
+  <h1>From the Farm</h1>
+  <p>Stories, updates and inspiration direct from our local producers. Real farming, real food, real community.</p>
+</div>
+
+{% if stories %}
+
+  {% with featured=stories.0 %}
+  <!-- Featured story -->
+  <a href="{% url 'story_detail' featured.pk %}" class="story-featured">
+    {% if featured.image %}
+      <img src="{{ featured.image.url }}" alt="{{ featured.title }}" class="story-featured-img">
+    {% else %}
+      <div class="story-featured-img-placeholder">🌾</div>
+    {% endif %}
+    <div class="story-featured-body">
+      <div class="story-tag"><i class="bi bi-star-fill" style="font-size:0.65rem;"></i> Featured Story</div>
+      <div class="story-featured-title">{{ featured.title }}</div>
+      <div class="story-featured-excerpt">{{ featured.content|truncatewords:35 }}</div>
+      <div class="story-meta">
+        <span class="story-meta-item"><i class="bi bi-shop"></i> {{ featured.producer.business_name }}</span>
+        <span class="story-meta-item"><i class="bi bi-calendar3"></i> {{ featured.created_at|date:"d F Y" }}</span>
+        <span class="story-meta-item"><i class="bi bi-clock"></i> ~{{ featured.content|wordcount|add:0 }} words</span>
+      </div>
+      <span class="btn-read">Read the full story <i class="bi bi-arrow-right"></i></span>
+    </div>
+  </a>
+  {% endwith %}
+
+  {% if stories|length > 1 %}
+  <div class="stories-divider"><i class="bi bi-flower1"></i> More Stories</div>
+
+  <div class="row g-4">
+    {% for story in stories %}
+    {% if not forloop.first %}
+    <div class="col-md-4">
+      <a href="{% url 'story_detail' story.pk %}" class="story-grid-card">
+        {% if story.image %}
+          <img src="{{ story.image.url }}" alt="{{ story.title }}" class="story-grid-img">
+        {% else %}
+          <div class="story-grid-img-placeholder">🌿</div>
+        {% endif %}
+        <div class="story-grid-body">
+          <div class="story-tag" style="font-size:0.7rem;padding:3px 10px;"><i class="bi bi-journal-text"></i> Farm Story</div>
+          <div class="story-grid-title">{{ story.title }}</div>
+          <div class="story-grid-excerpt">{{ story.content|truncatewords:22 }}</div>
+          <div class="story-grid-footer">
+            <div class="story-producer-chip">
+              <div class="story-producer-dot">🌱</div>
+              {{ story.producer.business_name }}
+            </div>
+            <span class="story-read-link">Read <i class="bi bi-arrow-right"></i></span>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+{% else %}
+  <div class="empty-stories">
+    <div style="font-size:3rem;margin-bottom:16px;">🌱</div>
+    <h4 style="color:var(--green-deep);margin-bottom:8px;">No stories yet</h4>
+    <p>Our producers are getting ready to share their first farm stories. Check back soon.</p>
+  </div>
+{% endif %}
+
+{% endblock %}

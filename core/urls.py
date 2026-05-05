@@ -54,6 +54,7 @@ urlpatterns = [
     path('producer/content/recipes/<int:pk>/edit/', views.recipe_edit, name='edit_recipe'),
     path('producer/content/stories/add/', views.farm_story_create, name='farm_story_create'),
     path('producer/content/stories/<int:pk>/edit/', views.farm_story_edit, name='edit_story'),
+    path('stories/', views.stories_list, name='stories_list'),
     path('stories/<int:pk>/', views.story_detail, name='story_detail'),
 
     # TC-012: Producer Payment Settlements

@@ -200,12 +200,23 @@ def home(request):
     total_products = Product.objects.filter(
         availability__in=['available', 'in_season']
     ).count()
+    recent_stories = FarmStory.objects.filter(
+        is_approved=True
+    ).select_related('producer').order_by('-created_at')[:3]
 
     return render(request, 'home.html', {
         'categories': categories,
         'featured_products': featured_products,
         'total_products': total_products,
+        'recent_stories': recent_stories,
     })
+
+
+def stories_list(request):
+    stories = FarmStory.objects.filter(
+        is_approved=True
+    ).select_related('producer').order_by('-created_at')
+    return render(request, 'producer/stories_list.html', {'stories': stories})
 
 
 # ─────────────────────────────────────────────────────────────
